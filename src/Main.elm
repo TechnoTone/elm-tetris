@@ -4,7 +4,7 @@ import Browser
 import Browser.Dom as Dom
 import Browser.Events as Browser
 import GameGrid
-import Html exposing (button, div, h1, h3, math, text)
+import Html exposing (button, div, h1, h3, text)
 import Html.Attributes exposing (class, id)
 import Html.Events exposing (onClick)
 import Html.Events.Extra.Touch as Touch exposing (Touch)
@@ -489,13 +489,20 @@ main =
 
 
 subscriptions : Model -> Sub Msg
-subscriptions =
-    always <|
-        Sub.batch
-            [ Browser.onAnimationFrame Tick
-            , Browser.onKeyDown (Decode.map PlayerAction keyDecoder)
-            , Browser.onResize WindowResize
-            ]
+subscriptions model =
+    case model.gamePhase of
+        Playing _ _ ->
+            Sub.batch
+                [ Browser.onAnimationFrame Tick
+                , Browser.onKeyDown (Decode.map PlayerAction keyDecoder)
+                , Browser.onResize WindowResize
+                ]
+
+        _ ->
+            Sub.batch
+                [ Browser.onKeyDown (Decode.map PlayerAction keyDecoder)
+                , Browser.onResize WindowResize
+                ]
 
 
 keyDecoder : Decode.Decoder PlayerAction
