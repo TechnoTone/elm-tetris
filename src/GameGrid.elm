@@ -5,10 +5,10 @@
 module GameGrid exposing
     ( Block(..)
     , Cell(..)
-    , Column
     , Coordinate
     , Model
     , NextTetromino
+    , Row
     , checkForDeadCells
     , collapse
     , dropToBottom
@@ -33,7 +33,7 @@ module GameGrid exposing
     )
 
 import Array exposing (Array)
-import Html exposing (Html, div)
+import Html exposing (Html, a, div)
 import Html.Attributes exposing (class)
 import Html.Events exposing (on)
 import Json.Decode as Decode exposing (int)
@@ -51,7 +51,7 @@ import Json.Decode as Decode exposing (int)
 
 type alias Model =
     { next : Maybe NextTetromino
-    , columns : Array Column
+    , rows : Array Row
     }
 
 
@@ -66,7 +66,7 @@ type alias Tetromino =
     }
 
 
-type alias Column =
+type alias Row =
     Array Cell
 
 
@@ -74,6 +74,7 @@ type Cell
     = Empty
     | AliveBlock Block
     | DeadBlock Block
+    | OutOfBounds
 
 
 type Block
@@ -105,8 +106,8 @@ height =
 init : Model
 init =
     Empty
-        |> Array.repeat height
         |> Array.repeat width
+        |> Array.repeat height
         |> Model Nothing
 
 
@@ -161,6 +162,9 @@ view ({ next } as gameGrid) deadCellAnimationEndMsg =
 
                 DeadBlock block ->
                     "cell_dead cell_" ++ blockClass block
+
+                OutOfBounds ->
+                    ""
 
         blockClass block =
             case block of
@@ -241,11 +245,7 @@ falling model =
                     next.coordinate
 
                 cellBelow =
-                    if row == height - 1 then
-                        AliveBlock Red
-
-                    else
-                        model.columns |> Array.get col |> Maybe.andThen (Array.get (row + 1)) |> Maybe.withDefault Empty
+                    getCell model (Coordinate col (row + 1))
             in
             case cellBelow of
                 Empty ->
@@ -303,56 +303,43 @@ removeDeadCell coordinate model =
 collapse : Model -> Model
 collapse model =
     let
-        collapseColumn : Column -> Column
-        collapseColumn column =
-            let
-                l =
-                    column |> Array.toList
+        nonEmptyRows : Array Row
+        nonEmptyRows =
+            model.rows |> Array.filter (Array.filter cellIsDead >> Array.isEmpty >> not)
 
-                n =
-                    column |> bottomEmptyCell
-            in
-            if n > 0 then
-                Empty
-                    :: List.take n l
-                    ++ List.drop (n + 1) l
-                    |> Array.fromList
-
-            else
-                column
+        length : Int
+        length =
+            Array.length nonEmptyRows
     in
-    model |> setColumns (model.columns |> Array.map collapseColumn)
+    model |> setRows (Array.repeat (height - length) (Array.repeat width Empty))
 
 
 toEliminatedBlock : Cell -> Cell
 toEliminatedBlock aliveCell =
     case aliveCell of
-        Empty ->
-            Empty
-
         AliveBlock block ->
             DeadBlock block
 
-        DeadBlock _ ->
+        _ ->
             aliveCell
 
 
 updateCell : Coordinate -> Cell -> Model -> Model
 updateCell { col, row } cell model =
     model
-        |> (Array.set col
-                (Array.get col model.columns
+        |> (Array.set row
+                (Array.get row model.rows
                     |> Maybe.withDefault Array.empty
-                    |> Array.set row cell
+                    |> Array.set col cell
                 )
-                model.columns
-                |> setColumns
+                model.rows
+                |> setRows
            )
 
 
-setColumns : Array Column -> Model -> Model
-setColumns columns model =
-    { model | columns = columns }
+setRows : Array Row -> Model -> Model
+setRows rows model =
+    { model | rows = rows }
 
 
 dropToBottom : Model -> Model
@@ -360,7 +347,7 @@ dropToBottom model =
     let
         colCells : Int -> Array Cell
         colCells col =
-            model.columns |> Array.get col |> Maybe.withDefault Array.empty
+            model.rows |> Array.get col |> Maybe.withDefault Array.empty
 
         newCoordinate : Coordinate -> Coordinate
         newCoordinate coordinate =
@@ -455,11 +442,11 @@ landNextBlock next model =
 
 
 getCell : Model -> Coordinate -> Cell
-getCell { columns } { col, row } =
-    columns
-        |> Array.get col
-        |> Maybe.andThen (Array.get row)
-        |> Maybe.withDefault Empty
+getCell { rows } { col, row } =
+    rows
+        |> Array.get row
+        |> Maybe.andThen (Array.get col)
+        |> Maybe.withDefault OutOfBounds
 
 
 cellIsEmpty : Cell -> Bool
@@ -514,7 +501,7 @@ checkForDeadCells model =
 
 hasDeadCells : Model -> Bool
 hasDeadCells model =
-    model.columns
+    model.rows
         |> Array.toList
         |> List.concatMap Array.toList
         |> List.any cellIsDead
@@ -543,7 +530,7 @@ isCollapsible model =
                 |> List.head
                 |> Maybe.withDefault 99
     in
-    model.columns
+    model.rows
         |> Array.map (\cells -> bottomEmptyCell cells > topAliveCell cells)
         |> Array.toList
         |> List.foldr (||) False
