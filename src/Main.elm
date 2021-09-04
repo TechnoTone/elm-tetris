@@ -3,13 +3,14 @@ module Main exposing (Model, Msg(..), initModel, main, subscriptions, update, vi
 import Browser
 import Browser.Dom as Dom
 import Browser.Events as Browser
-import GameGrid
+import GameGrid exposing (Msg, tick)
 import Html exposing (button, div, h1, h3, text)
 import Html.Attributes exposing (class, id)
 import Html.Events exposing (onClick)
 import Html.Events.Extra.Touch as Touch exposing (Touch)
 import Json.Decode as Decode
 import List.Extra as List
+import PlayerAction
 import Task
 import Time
 
@@ -25,7 +26,7 @@ import Time
 
 
 type alias Model =
-    { gameGrid : GameGrid.Model
+    { gameGrid : GameGrid.GameGridModel
     , gamePhase : Phase
     , gameData : GameData
     , touches : List Touch
@@ -43,14 +44,8 @@ type alias GameData =
 
 type Phase
     = TitleScreen
-    | Playing Int PlayingPhase
+    | Playing Int
     | GameOver Int
-
-
-type PlayingPhase
-    = Controlling
-    | CellsDying (List GameGrid.Coordinate)
-    | Collapsing
 
 
 type Msg
@@ -58,19 +53,9 @@ type Msg
     | WindowResize Int Int
     | Tick Time.Posix
     | StartGame
-    | PlayerAction PlayerAction
+    | PlayerAction PlayerAction.Action
     | Touch TouchEventType Touch.Event
-    | DeadCellAnimationEnd GameGrid.Coordinate
-
-
-type PlayerAction
-    = None
-    | DropAction
-    | LeftAction
-    | RightAction
-    | RotateLeftAction
-    | RotateRightAction
-    | DownAction
+    | GameGridMsg GameGrid.Msg
 
 
 type TouchEventType
@@ -124,7 +109,8 @@ view model =
 
         viewGame =
             [ h3 [] [ text ("SCORE: " ++ String.fromInt model.gameData.score) ]
-            , GameGrid.view model.gameGrid DeadCellAnimationEnd
+            , GameGrid.view model.gameGrid
+                |> Html.map GameGridMsg
             ]
 
         ( classList, content ) =
@@ -143,7 +129,7 @@ view model =
                            ]
                     )
 
-                Playing _ _ ->
+                Playing _ ->
                     ( [ Touch.onStart <| Touch TouchStart
                       , Touch.onMove <| Touch TouchMove
                       , Touch.onEnd <| Touch TouchEnd
@@ -173,142 +159,63 @@ view model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
+        noUpdate : ( Model, Cmd msg )
         noUpdate =
             ( model, Cmd.none )
 
-        doUpdate fn =
+        updateModel : (Model -> Model) -> ( Model, Cmd msg )
+        updateModel fn =
             ( fn model, Cmd.none )
 
         startGame =
-            setGameGrid GameGrid.init >> setGameData defaultGameData >> setPhase (Playing 0 Controlling)
+            setGameGrid GameGrid.init >> setGameData defaultGameData >> setPhase (Playing 0)
     in
     case ( msg, model.gamePhase ) of
         ( GotViewport viewPort, _ ) ->
-            doUpdate (setViewport viewPort)
+            updateModel (setViewport viewPort)
 
         ( WindowResize width height, _ ) ->
-            doUpdate (setWindowSize width height)
+            updateModel (setWindowSize width height)
 
         ( StartGame, _ ) ->
-            doUpdate startGame
+            updateModel startGame
 
-        ( PlayerAction DropAction, TitleScreen ) ->
-            doUpdate startGame
+        ( PlayerAction PlayerAction.Drop, TitleScreen ) ->
+            updateModel startGame
 
-        ( PlayerAction action, Playing _ Controlling ) ->
-            ( handleAction action model, Cmd.none )
+        ( PlayerAction action, Playing _ ) ->
+            updateModel
+                (setGameGrid
+                    (GameGrid.handleAction action model.gameGrid)
+                )
 
-        ( PlayerAction DropAction, GameOver _ ) ->
-            doUpdate (setPhase TitleScreen)
+        ( PlayerAction PlayerAction.Drop, GameOver _ ) ->
+            updateModel (setPhase TitleScreen)
 
         ( Touch eventType eventData, _ ) ->
             ( handleTouch eventType eventData model, Cmd.none )
 
-        ( Tick posix, Playing since Controlling ) ->
+        ( Tick posix, Playing since ) ->
             let
                 ms =
                     Time.posixToMillis posix
             in
-            if GameGrid.hasNoNext model.gameGrid then
-                let
-                    deadCells : List GameGrid.Coordinate
-                    deadCells =
-                        GameGrid.checkForDeadCells model.gameGrid
-
-                    totalScore =
-                        (List.length deadCells // GameGrid.width) ^ 2
-                in
-                if totalScore > 0 then
-                    doUpdate (updateGameData (incrementScore totalScore >> incrementEliminationCount) >> setPhase (Playing ms (CellsDying deadCells)))
-
-                else if GameGrid.spawningBlocked model.gameGrid then
-                    doUpdate (setPhase (GameOver ms))
-
-                else
-                    doUpdate (updateGameGrid (GameGrid.spawnNewBlocks ms) >> updateGameData (incrementBlockCount >> adjustGameSpeed) >> setPhase (Playing ms Controlling))
-
-            else if since + model.gameData.speed <= ms then
-                doUpdate (updateGameGrid GameGrid.falling >> setPhase (Playing ms Controlling))
-
-            else
-                noUpdate
-
-        ( Tick posix, Playing since (CellsDying (cell :: rest)) ) ->
-            let
-                ms =
-                    Time.posixToMillis posix
-            in
-            if since + 20 <= ms then
-                doUpdate
-                    (updateGameGrid (GameGrid.eliminateCell cell)
-                        >> setPhase (Playing ms (CellsDying rest))
-                    )
-
-            else
-                noUpdate
-
-        ( Tick posix, Playing _ (CellsDying []) ) ->
-            if GameGrid.hasDeadCells model.gameGrid then
-                noUpdate
-
-            else
-                doUpdate (setPhase (Playing (Time.posixToMillis posix) Collapsing))
-
-        ( Tick posix, Playing since Collapsing ) ->
-            let
-                ms =
-                    Time.posixToMillis posix
-            in
-            if GameGrid.isCollapsible model.gameGrid then
-                if since + 20 <= ms then
-                    doUpdate
-                        (updateGameGrid GameGrid.collapse
-                            >> setPhase (Playing ms Collapsing)
-                        )
-
-                else
-                    noUpdate
-
-            else
-                doUpdate (setPhase (Playing 0 Controlling))
+            updateModel
+                (setGameGrid (GameGrid.tick ms model.gameGrid))
 
         ( Tick posix, GameOver since ) ->
             if since + 5000 <= Time.posixToMillis posix then
-                doUpdate (setPhase TitleScreen)
+                updateModel (setPhase TitleScreen)
 
             else
                 noUpdate
 
-        ( DeadCellAnimationEnd coordinate, _ ) ->
-            doUpdate (updateGameGrid (GameGrid.removeDeadCell coordinate))
+        ( GameGridMsg ggMsg, _ ) ->
+            updateModel
+                (setGameGrid (GameGrid.update ggMsg model.gameGrid))
 
         _ ->
             noUpdate
-
-
-handleAction : PlayerAction -> Model -> Model
-handleAction action model =
-    case action of
-        DropAction ->
-            model |> updateGameGrid GameGrid.dropToBottom |> setPhase (Playing 0 Controlling)
-
-        RotateLeftAction ->
-            model |> updateGameGrid GameGrid.rotateLeft
-
-        RotateRightAction ->
-            model |> updateGameGrid GameGrid.rotateRight
-
-        LeftAction ->
-            model |> updateGameGrid GameGrid.moveLeft
-
-        RightAction ->
-            model |> updateGameGrid GameGrid.moveRight
-
-        DownAction ->
-            model |> updateGameGrid GameGrid.moveDown
-
-        None ->
-            model
 
 
 handleTouch : TouchEventType -> Touch.Event -> Model -> Model
@@ -323,7 +230,8 @@ handleTouch eventType eventData model =
         TouchEnd ->
             model
                 |> convertTouches eventData.changedTouches
-                |> List.foldr handleAction model
+                |> List.foldr GameGrid.handleAction model.gameGrid
+                |> setGameGridOn model
                 |> updateTouches (removeTouches eventData.changedTouches)
 
 
@@ -346,14 +254,14 @@ removeTouches toRemove existingTouches =
     existingTouches |> List.filter (\t -> not <| List.member t.identifier ids)
 
 
-convertTouches : List Touch -> Model -> List PlayerAction
+convertTouches : List Touch -> Model -> List PlayerAction.Action
 convertTouches endedTouches { touches, viewportSize } =
     let
         matchingTouch : Touch -> Touch
         matchingTouch t =
             touches |> List.filter (.identifier >> (==) t.identifier) |> List.head |> Maybe.withDefault t
 
-        convertTouch : Touch -> PlayerAction
+        convertTouch : Touch -> PlayerAction.Action
         convertTouch touch =
             let
                 touchX =
@@ -370,7 +278,7 @@ convertTouches endedTouches { touches, viewportSize } =
                 distance ( x1, y1 ) ( x2, y2 ) =
                     sqrt ((x1 - x2) ^ 2 + (y1 - y2) ^ 2)
 
-                convertSwipe : ( Float, Float ) -> ( Float, Float ) -> PlayerAction
+                convertSwipe : ( Float, Float ) -> ( Float, Float ) -> PlayerAction.Action
                 convertSwipe ( x1, y1 ) ( x2, y2 ) =
                     let
                         dx =
@@ -381,26 +289,26 @@ convertTouches endedTouches { touches, viewportSize } =
                     in
                     if abs dx > abs dy then
                         if dx > 0 then
-                            RightAction
+                            PlayerAction.Right
 
                         else
-                            LeftAction
+                            PlayerAction.Left
 
                     else if dy > 0 then
-                        RotateRightAction
+                        PlayerAction.RotateRight
 
                     else
-                        RotateLeftAction
+                        PlayerAction.RotateLeft
             in
             if distance touch.clientPos match.clientPos < 8 then
                 if touchX < clientWidth / 3 then
-                    LeftAction
+                    PlayerAction.Left
 
                 else if touchX < clientWidth / 3 * 2 then
-                    DownAction
+                    PlayerAction.Down
 
                 else
-                    RightAction
+                    PlayerAction.Right
 
             else
                 convertSwipe touch.clientPos match.clientPos
@@ -423,49 +331,19 @@ setPhase phase model =
     { model | gamePhase = phase }
 
 
-setGameGrid : GameGrid.Model -> Model -> Model
+setGameGrid : GameGrid.GameGridModel -> Model -> Model
 setGameGrid gameGrid model =
     { model | gameGrid = gameGrid }
 
 
-updateGameGrid : (GameGrid.Model -> GameGrid.Model) -> Model -> Model
-updateGameGrid fn model =
-    setGameGrid (fn model.gameGrid) model
+setGameGridOn : Model -> GameGrid.GameGridModel -> Model
+setGameGridOn model gameGrid =
+    setGameGrid gameGrid model
 
 
 setGameData : GameData -> Model -> Model
 setGameData gameData model =
     { model | gameData = gameData }
-
-
-updateGameData : (GameData -> GameData) -> Model -> Model
-updateGameData fn model =
-    setGameData (fn model.gameData) model
-
-
-incrementScore : Int -> GameData -> GameData
-incrementScore increment gameData =
-    { gameData | score = gameData.score + increment }
-
-
-incrementBlockCount : GameData -> GameData
-incrementBlockCount gameData =
-    { gameData | blockCount = gameData.blockCount + 1 }
-
-
-incrementEliminationCount : GameData -> GameData
-incrementEliminationCount gameData =
-    { gameData | eliminationCount = gameData.eliminationCount + 1 }
-
-
-adjustGameSpeed : GameData -> GameData
-adjustGameSpeed gameData =
-    { gameData | speed = getSpeed gameData }
-
-
-getSpeed : GameData -> Int
-getSpeed gameData =
-    startSpeed - gameData.blockCount // 2
 
 
 
@@ -491,7 +369,7 @@ main =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.gamePhase of
-        Playing _ _ ->
+        Playing _ ->
             Sub.batch
                 [ Browser.onAnimationFrame Tick
                 , Browser.onKeyDown (Decode.map PlayerAction keyDecoder)
@@ -505,42 +383,42 @@ subscriptions model =
                 ]
 
 
-keyDecoder : Decode.Decoder PlayerAction
+keyDecoder : Decode.Decoder PlayerAction.Action
 keyDecoder =
     let
         toAction string =
             case String.toUpper string of
                 "ARROWLEFT" ->
-                    LeftAction
+                    PlayerAction.Left
 
                 "A" ->
-                    LeftAction
+                    PlayerAction.Left
 
                 "ARROWRIGHT" ->
-                    RightAction
+                    PlayerAction.Right
 
                 "D" ->
-                    RightAction
+                    PlayerAction.Right
 
                 "Q" ->
-                    RotateLeftAction
+                    PlayerAction.RotateLeft
 
                 "E" ->
-                    RotateRightAction
+                    PlayerAction.RotateRight
 
                 "ARROWUP" ->
-                    RotateRightAction
+                    PlayerAction.RotateRight
 
                 "ARROWDOWN" ->
-                    DownAction
+                    PlayerAction.Down
 
                 "S" ->
-                    DownAction
+                    PlayerAction.Down
 
                 " " ->
-                    DropAction
+                    PlayerAction.Drop
 
                 _ ->
-                    None
+                    PlayerAction.None
     in
     Decode.map toAction (Decode.field "key" Decode.string)

@@ -3,40 +3,20 @@
 
 
 module GameGrid exposing
-    ( Block(..)
-    , Cell(..)
-    , Coordinate
-    , Model
-    , NextTetromino
-    , Row
-    , checkForDeadCells
-    , collapse
-    , dropToBottom
-    , eliminateCell
-    , falling
-    , hasDeadCells
-    , hasNext
-    , hasNoNext
-    , height
+    ( GameGridModel
+    , Msg
+    , handleAction
     , init
-    , isCollapsible
-    , moveDown
-    , moveLeft
-    , moveRight
-    , removeDeadCell
-    , rotateLeft
-    , rotateRight
-    , spawnNewBlocks
-    , spawningBlocked
+    , tick
+    , update
     , view
-    , width
     )
 
-import Array exposing (Array)
-import Html exposing (Html, a, div)
+import Html exposing (Html, div, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (on)
-import Json.Decode as Decode exposing (int)
+import Json.Decode as Decode
+import PlayerAction
 
 
 
@@ -49,25 +29,61 @@ import Json.Decode as Decode exposing (int)
 -}
 
 
+init : GameGridModel
+init =
+    Uninitialised
+
+
+type GameGridModel
+    = Uninitialised
+    | Initialising { next : Tetromino }
+    | Initialised Model
+
+
 type alias Model =
-    { next : Maybe NextTetromino
-    , rows : Array Row
+    { current : CurrentTetromino
+    , next : Tetromino
+    , gridCells : List GridCell
     }
 
 
-type alias NextTetromino =
+type CurrentTetromino
+    = NoTetromino
+    | InPlay TetrominoInPlay
+    | Landed TetrominoInPlay
+
+
+type alias TetrominoInPlay =
     { tetromino : Tetromino
-    , coordinate : Coordinate
+    , position : Coordinate
     }
 
 
 type alias Tetromino =
-    { blockType : Block
+    { shape : TetrominoShape
+    , orientation : Orientation
     }
 
 
-type alias Row =
-    Array Cell
+type Orientation
+    = R0
+    | R90
+    | R180
+    | R270
+
+
+type alias TetrominoShape =
+    { width : Int
+    , height : Int
+    , block : Block
+    , orientations : List (List Coordinate)
+    }
+
+
+type alias GridCell =
+    { cell : Cell
+    , position : Coordinate
+    }
 
 
 type Cell
@@ -93,22 +109,8 @@ type alias Coordinate =
     }
 
 
-width : number
-width =
-    10
-
-
-height : Int
-height =
-    24
-
-
-init : Model
-init =
-    Empty
-        |> Array.repeat width
-        |> Array.repeat height
-        |> Model Nothing
+type Msg
+    = DeadCellAnimationEnd Coordinate
 
 
 
@@ -121,8 +123,18 @@ init =
 -}
 
 
-view : Model -> (Coordinate -> msg) -> Html msg
-view ({ next } as gameGrid) deadCellAnimationEndMsg =
+view : GameGridModel -> Html Msg
+view model =
+    case model of
+        Initialised gameGridModel ->
+            viewGameGrid gameGridModel
+
+        _ ->
+            text "Initialising..."
+
+
+viewGameGrid : Model -> Html Msg
+viewGameGrid model =
     let
         drawCell coordinate cell =
             div
@@ -135,15 +147,15 @@ view ({ next } as gameGrid) deadCellAnimationEndMsg =
                     []
                 ]
 
-        captureAnimationEnd : Coordinate -> List (Html.Attribute msg)
+        captureAnimationEnd : Coordinate -> List (Html.Attribute Msg)
         captureAnimationEnd coordinate =
             [ "webkitAnimationEnd", "oanimationend", "msAnimationEnd", "animationend" ]
                 |> List.map
                     (\event ->
-                        on event (Decode.succeed (deadCellAnimationEndMsg coordinate))
+                        on event (Decode.succeed (DeadCellAnimationEnd coordinate))
                     )
 
-        deadCellAnimationHook : Cell -> Coordinate -> List (Html.Attribute msg)
+        deadCellAnimationHook : Cell -> Coordinate -> List (Html.Attribute Msg)
         deadCellAnimationHook cell coordinate =
             case cell of
                 DeadBlock _ ->
@@ -190,20 +202,7 @@ view ({ next } as gameGrid) deadCellAnimationEndMsg =
                     "orange"
 
         getCell_ x y =
-            -- case next of
-            -- Nothing ->
-            getCell gameGrid (Coordinate x y)
-
-        -- Just { blockSet, coordinate } ->
-        --     if x == coordinate.col && y >= coordinate.row - 2 && y <= coordinate.row then
-        --         if y + 2 == coordinate.row then
-        --             AliveBlock blockSet.b1
-        --         else if y + 1 == coordinate.row then
-        --             AliveBlock blockSet.b2
-        --         else
-        --             AliveBlock blockSet.b3
-        --     else
-        --         getCell gameGrid (Coordinate x y)
+            getCell model (Coordinate x y)
     in
     div
         [ class "GameArea" ]
@@ -228,207 +227,75 @@ view ({ next } as gameGrid) deadCellAnimationEndMsg =
 -}
 
 
-spawnNewBlocks : Int -> Model -> Model
-spawnNewBlocks millis model =
-    model
+initialise : Int -> GameGridModel -> GameGridModel
+initialise millis model =
+    case model of
+        Uninitialised ->
+            Initialising { next = generateTetromino millis }
 
+        Initialising { next } ->
+            Initialised (Model NoTetromino next [])
 
-falling : Model -> Model
-falling model =
-    case model.next of
-        Nothing ->
+        Initialised _ ->
             model
 
-        Just next ->
-            let
-                { col, row } =
-                    next.coordinate
 
-                cellBelow =
-                    getCell model (Coordinate col (row + 1))
-            in
-            case cellBelow of
-                Empty ->
-                    updateNextBlock (updateCoordinate (updateCoordinateRow ((+) 1))) model
-
-                _ ->
-                    landNextBlock next model
+update : Msg -> GameGridModel -> GameGridModel
+update msg model =
+    model
 
 
-setNextBlock : NextTetromino -> Model -> Model
-setNextBlock nextBlock model =
-    { model | next = Just nextBlock }
+tick : Int -> GameGridModel -> GameGridModel
+tick millis gameGridModel =
+    case gameGridModel of
+        Uninitialised ->
+            Debug.todo "branch 'Uninitialised' not implemented"
+
+        Initialising { next } ->
+            Debug.todo "branch 'Initialising _' not implemented"
+
+        Initialised model ->
+            gameGridModel
 
 
-updateNextBlock : (NextTetromino -> NextTetromino) -> Model -> Model
-updateNextBlock fn model =
-    case model.next of
-        Nothing ->
+handleAction : PlayerAction.Action -> GameGridModel -> GameGridModel
+handleAction action model =
+    case action of
+        PlayerAction.RotateLeft ->
             model
 
-        Just next ->
-            setNextBlock (fn next) model
+        PlayerAction.RotateRight ->
+            model
+
+        PlayerAction.Left ->
+            model
+
+        PlayerAction.Right ->
+            model
+
+        PlayerAction.Down ->
+            model
+
+        PlayerAction.Drop ->
+            model
+
+        PlayerAction.None ->
+            model
 
 
-updateCoordinate : (Coordinate -> Coordinate) -> NextTetromino -> NextTetromino
-updateCoordinate fn next =
-    { next | coordinate = fn next.coordinate }
+generateTetromino : Int -> Tetromino
+generateTetromino millis =
+    Debug.todo "generateTetromino"
 
 
-updateCoordinateRow : (Int -> Int) -> Coordinate -> Coordinate
-updateCoordinateRow fn coordinate =
-    { coordinate | row = fn coordinate.row }
+setNextTetromino : Tetromino -> Model -> Model
+setNextTetromino next model =
+    { model | next = next }
 
 
-updateCoordinateCol : (Int -> Int) -> Coordinate -> Coordinate
-updateCoordinateCol fn coordinate =
-    { coordinate | col = fn coordinate.col }
-
-
-clearNextBlock : Model -> Model
-clearNextBlock model =
-    { model | next = Nothing }
-
-
-eliminateCell : Coordinate -> Model -> Model
-eliminateCell coordinate model =
-    model |> updateCell coordinate (toEliminatedBlock (getCell model coordinate))
-
-
-removeDeadCell : Coordinate -> Model -> Model
-removeDeadCell coordinate model =
-    model |> updateCell coordinate Empty
-
-
-collapse : Model -> Model
-collapse model =
-    let
-        nonEmptyRows : Array Row
-        nonEmptyRows =
-            model.rows |> Array.filter (Array.filter cellIsDead >> Array.isEmpty >> not)
-
-        length : Int
-        length =
-            Array.length nonEmptyRows
-    in
-    model |> setRows (Array.repeat (height - length) (Array.repeat width Empty))
-
-
-toEliminatedBlock : Cell -> Cell
-toEliminatedBlock aliveCell =
-    case aliveCell of
-        AliveBlock block ->
-            DeadBlock block
-
-        _ ->
-            aliveCell
-
-
-updateCell : Coordinate -> Cell -> Model -> Model
-updateCell { col, row } cell model =
-    model
-        |> (Array.set row
-                (Array.get row model.rows
-                    |> Maybe.withDefault Array.empty
-                    |> Array.set col cell
-                )
-                model.rows
-                |> setRows
-           )
-
-
-setRows : Array Row -> Model -> Model
-setRows rows model =
-    { model | rows = rows }
-
-
-dropToBottom : Model -> Model
-dropToBottom model =
-    let
-        colCells : Int -> Array Cell
-        colCells col =
-            model.rows |> Array.get col |> Maybe.withDefault Array.empty
-
-        newCoordinate : Coordinate -> Coordinate
-        newCoordinate coordinate =
-            { coordinate | row = bottomEmptyCell <| colCells coordinate.col }
-    in
-    updateNextBlock (\nb -> { nb | coordinate = newCoordinate nb.coordinate }) model
-
-
-rotateLeft : Model -> Model
-rotateLeft model =
-    -- TODO fix this
-    --let
-    --    update : BlockTriple -> BlockTriple
-    --    update blockSet =
-    --        BlockTriple blockSet.b2 blockSet.b3 blockSet.b1
-    --in
-    --updateNextBlock
-    --    (\nb -> { nb | blockSet = update nb.blockSet })
-    model
-
-
-rotateRight : Model -> Model
-rotateRight model =
-    -- TODO fix this
-    --let
-    --    update : BlockTriple -> BlockTriple
-    --    update blockSet =
-    --        BlockTriple blockSet.b3 blockSet.b1 blockSet.b2
-    --in
-    --updateNextBlock
-    --    (\nb -> { nb | blockSet = update nb.blockSet })
-    model
-
-
-moveNextBlock : Model -> Int -> NextTetromino -> NextTetromino
-moveNextBlock model col nb =
-    case model.next of
-        Just next ->
-            let
-                newCoordinate =
-                    Coordinate col next.coordinate.row
-            in
-            if
-                (col >= 0)
-                    && (col <= (width - 1))
-                    && cellIsEmpty (getCell model newCoordinate)
-            then
-                { nb | coordinate = newCoordinate }
-
-            else
-                nb
-
-        Nothing ->
-            nb
-
-
-moveLeft : Model -> Model
-moveLeft model =
-    updateNextBlock
-        (\nb -> moveNextBlock model (nb.coordinate.col - 1) nb)
-        model
-
-
-moveRight : Model -> Model
-moveRight model =
-    updateNextBlock
-        (\nb -> moveNextBlock model (nb.coordinate.col + 1) nb)
-        model
-
-
-moveDown : Model -> Model
-moveDown model =
-    --    TODO fix this
-    model
-
-
-landNextBlock : NextTetromino -> Model -> Model
-landNextBlock next model =
-    model
-        -- |> setColumns (Array.set col column model.columns)
-        |> clearNextBlock
+setNextToCurrent : Model -> Model
+setNextToCurrent model =
+    { model | current = InPlay (TetrominoInPlay model.next (Coordinate 0 0)) }
 
 
 
@@ -441,12 +308,32 @@ landNextBlock next model =
 -}
 
 
+width : number
+width =
+    10
+
+
+height : Int
+height =
+    20
+
+
 getCell : Model -> Coordinate -> Cell
-getCell { rows } { col, row } =
-    rows
-        |> Array.get row
-        |> Maybe.andThen (Array.get col)
-        |> Maybe.withDefault OutOfBounds
+getCell model position =
+    if isValidCoordinate position then
+        model.gridCells
+            |> List.filter (\gc -> gc.position == position)
+            |> List.head
+            |> Maybe.map .cell
+            |> Maybe.withDefault Empty
+
+    else
+        OutOfBounds
+
+
+isValidCoordinate : Coordinate -> Bool
+isValidCoordinate { col, row } =
+    col >= 0 && col < width && row >= 0 && row < height
 
 
 cellIsEmpty : Cell -> Bool
@@ -472,65 +359,3 @@ cellIsDead cell =
 
         _ ->
             False
-
-
-hasNext : Model -> Bool
-hasNext { next } =
-    next /= Nothing
-
-
-hasNoNext : Model -> Bool
-hasNoNext =
-    not << hasNext
-
-
-spawningBlocked : Model -> Bool
-spawningBlocked model =
-    -- model.columns
-    --     |> Array.get (model.width // 2)
-    --     |> Maybe.andThen (Array.get 0)
-    --     |> Maybe.map (always True)
-    --     |> Maybe.withDefault False
-    False
-
-
-checkForDeadCells : Model -> List Coordinate
-checkForDeadCells model =
-    []
-
-
-hasDeadCells : Model -> Bool
-hasDeadCells model =
-    model.rows
-        |> Array.toList
-        |> List.concatMap Array.toList
-        |> List.any cellIsDead
-
-
-bottomEmptyCell : Array Cell -> Int
-bottomEmptyCell cells =
-    cells
-        |> Array.toIndexedList
-        |> List.filter (Tuple.second >> cellIsEmpty)
-        |> List.map Tuple.first
-        |> List.reverse
-        |> List.head
-        |> Maybe.withDefault 0
-
-
-isCollapsible : Model -> Bool
-isCollapsible model =
-    let
-        topAliveCell : Array Cell -> Int
-        topAliveCell cells =
-            cells
-                |> Array.toIndexedList
-                |> List.filter (Tuple.second >> cellIsAlive)
-                |> List.map Tuple.first
-                |> List.head
-                |> Maybe.withDefault 99
-    in
-    model.rows
-        |> Array.map (\cells -> bottomEmptyCell cells > topAliveCell cells)
-        |> Array.toList
-        |> List.foldr (||) False
