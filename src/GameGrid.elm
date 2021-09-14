@@ -36,7 +36,6 @@ init =
 
 type GameGridModel
     = Uninitialised
-    | Initialising { next : Tetromino }
     | Initialised Model
 
 
@@ -236,10 +235,11 @@ tick : Int -> GameGridModel -> GameGridModel
 tick millis gameGridModel =
     case gameGridModel of
         Uninitialised ->
-            Initialising { next = randomTetromino millis }
-
-        Initialising { next } ->
-            Debug.todo "branch 'Initialising _' not implemented"
+            Initialised
+                { current = NoTetromino
+                , next = randomTetromino millis
+                , gridCells = []
+                }
 
         Initialised model ->
             gameGridModel
