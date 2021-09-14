@@ -44,7 +44,7 @@ type alias GameData =
 
 type Phase
     = TitleScreen
-    | Playing Int
+    | Playing
     | GameOver Int
 
 
@@ -129,7 +129,7 @@ view model =
                            ]
                     )
 
-                Playing _ ->
+                Playing ->
                     ( [ Touch.onStart <| Touch TouchStart
                       , Touch.onMove <| Touch TouchMove
                       , Touch.onEnd <| Touch TouchEnd
@@ -168,7 +168,7 @@ update msg model =
             ( fn model, Cmd.none )
 
         startGame =
-            setGameGrid GameGrid.init >> setGameData defaultGameData >> setPhase (Playing 0)
+            setGameGrid GameGrid.init >> setGameData defaultGameData >> setPhase Playing
     in
     case ( msg, model.gamePhase ) of
         ( GotViewport viewPort, _ ) ->
@@ -183,7 +183,7 @@ update msg model =
         ( PlayerAction PlayerAction.Drop, TitleScreen ) ->
             updateModel startGame
 
-        ( PlayerAction action, Playing _ ) ->
+        ( PlayerAction action, Playing ) ->
             updateModel
                 (setGameGrid
                     (GameGrid.handleAction action model.gameGrid)
@@ -195,7 +195,7 @@ update msg model =
         ( Touch eventType eventData, _ ) ->
             ( handleTouch eventType eventData model, Cmd.none )
 
-        ( Tick posix, Playing since ) ->
+        ( Tick posix, Playing ) ->
             let
                 ms =
                     Time.posixToMillis posix
@@ -369,7 +369,7 @@ main =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.gamePhase of
-        Playing _ ->
+        Playing ->
             Sub.batch
                 [ Browser.onAnimationFrame Tick
                 , Browser.onKeyDown (Decode.map PlayerAction keyDecoder)
