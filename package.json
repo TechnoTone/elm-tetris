@@ -2,9 +2,10 @@
   "name": "elm-tetris",
   "version": "1.0.0",
   "scripts": {
-    "start": "parcel index.html"
+    "start": "parcel"
   },
   "author": "Tony Hunt",
+  "source": "index.html",
   "devDependencies": {
     "@parcel/transformer-elm": "^2.0.0-rc.0",
     "@parcel/transformer-less": "^2.0.0-rc.0",
