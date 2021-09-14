@@ -59,6 +59,39 @@ type alias TetrominoInPlay =
     }
 
 
+type alias GridCell =
+    { cell : Cell
+    , position : Coordinate
+    }
+
+
+type Cell
+    = Empty
+    | Alive Colour
+    | Dead Colour
+    | OutOfBounds
+
+
+type alias Coordinate =
+    { col : Int
+    , row : Int
+    }
+
+
+type Msg
+    = DeadCellAnimationEnd Coordinate
+
+
+type Colour
+    = Red
+    | Green
+    | Blue
+    | Cyan
+    | Yellow
+    | Magenta
+    | Orange
+
+
 type alias Tetromino =
     { shape : TetrominoShape
     , orientation : Orientation
@@ -75,42 +108,9 @@ type Orientation
 type alias TetrominoShape =
     { width : Int
     , height : Int
-    , block : Block
+    , block : Colour
     , orientations : List (List Coordinate)
     }
-
-
-type alias GridCell =
-    { cell : Cell
-    , position : Coordinate
-    }
-
-
-type Cell
-    = Empty
-    | AliveBlock Block
-    | DeadBlock Block
-    | OutOfBounds
-
-
-type Block
-    = Red
-    | Green
-    | Blue
-    | Cyan
-    | Yellow
-    | Magenta
-    | Orange
-
-
-type alias Coordinate =
-    { col : Int
-    , row : Int
-    }
-
-
-type Msg
-    = DeadCellAnimationEnd Coordinate
 
 
 
@@ -158,7 +158,7 @@ viewGameGrid model =
         deadCellAnimationHook : Cell -> Coordinate -> List (Html.Attribute Msg)
         deadCellAnimationHook cell coordinate =
             case cell of
-                DeadBlock _ ->
+                Dead _ ->
                     captureAnimationEnd coordinate
 
                 _ ->
@@ -169,10 +169,10 @@ viewGameGrid model =
                 Empty ->
                     "cell_empty"
 
-                AliveBlock block ->
+                Alive block ->
                     "cell_" ++ blockClass block
 
-                DeadBlock block ->
+                Dead block ->
                     "cell_dead cell_" ++ blockClass block
 
                 OutOfBounds ->
@@ -227,19 +227,6 @@ viewGameGrid model =
 -}
 
 
-initialise : Int -> GameGridModel -> GameGridModel
-initialise millis model =
-    case model of
-        Uninitialised ->
-            Initialising { next = generateTetromino millis }
-
-        Initialising { next } ->
-            Initialised (Model NoTetromino next [])
-
-        Initialised _ ->
-            model
-
-
 update : Msg -> GameGridModel -> GameGridModel
 update msg model =
     model
@@ -249,13 +236,23 @@ tick : Int -> GameGridModel -> GameGridModel
 tick millis gameGridModel =
     case gameGridModel of
         Uninitialised ->
-            Debug.todo "branch 'Uninitialised' not implemented"
+            Initialising { next = randomTetromino millis }
 
         Initialising { next } ->
             Debug.todo "branch 'Initialising _' not implemented"
 
         Initialised model ->
             gameGridModel
+
+
+setNextTetromino : Tetromino -> Model -> Model
+setNextTetromino next model =
+    { model | next = next }
+
+
+setNextToCurrent : Model -> Model
+setNextToCurrent model =
+    { model | current = InPlay (TetrominoInPlay model.next (Coordinate 0 0)) }
 
 
 handleAction : PlayerAction.Action -> GameGridModel -> GameGridModel
@@ -281,21 +278,6 @@ handleAction action model =
 
         PlayerAction.None ->
             model
-
-
-generateTetromino : Int -> Tetromino
-generateTetromino millis =
-    Debug.todo "generateTetromino"
-
-
-setNextTetromino : Tetromino -> Model -> Model
-setNextTetromino next model =
-    { model | next = next }
-
-
-setNextToCurrent : Model -> Model
-setNextToCurrent model =
-    { model | current = InPlay (TetrominoInPlay model.next (Coordinate 0 0)) }
 
 
 
@@ -344,7 +326,7 @@ cellIsEmpty cell =
 cellIsAlive : Cell -> Bool
 cellIsAlive cell =
     case cell of
-        AliveBlock _ ->
+        Alive _ ->
             True
 
         _ ->
@@ -354,8 +336,28 @@ cellIsAlive cell =
 cellIsDead : Cell -> Bool
 cellIsDead cell =
     case cell of
-        DeadBlock _ ->
+        Dead _ ->
             True
 
         _ ->
             False
+
+
+all : { i : TetrominoShape }
+all =
+    { i = i
+    }
+
+
+i : TetrominoShape
+i =
+    { width = 4
+    , height = 4
+    , block = Red
+    , orientations = []
+    }
+
+
+randomTetromino : Int -> Tetromino
+randomTetromino seed =
+    Tetromino i R0
