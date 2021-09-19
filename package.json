@@ -2,7 +2,8 @@
   "name": "elm-tetris",
   "version": "1.0.0",
   "scripts": {
-    "start": "parcel"
+    "start": "parcel",
+    "test": "elm-test --watch"
   },
   "author": "Tony Hunt",
   "source": "index.html",
