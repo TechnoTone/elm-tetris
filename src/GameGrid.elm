@@ -3,10 +3,16 @@
 
 
 module GameGrid exposing
-    ( GameGridModel
+    ( Colour(..)
+    , Coordinate
+    , CurrentTetromino(..)
+    , GameGridModel(..)
     , Msg
+    , Tetromino
     , handleAction
     , init
+    , randomTetromino
+    , tetrominoes
     , tick
     , update
     , view
@@ -82,33 +88,19 @@ type Msg
 
 
 type Colour
-    = Red
-    | Green
-    | Blue
-    | Cyan
+    = Cyan
     | Yellow
     | Magenta
     | Orange
+    | Green
+    | Blue
+    | Red
 
 
 type alias Tetromino =
-    { shape : TetrominoShape
-    , orientation : Orientation
-    }
-
-
-type Orientation
-    = R0
-    | R90
-    | R180
-    | R270
-
-
-type alias TetrominoShape =
-    { width : Int
-    , height : Int
+    { size : Int
     , block : Colour
-    , orientations : List (List Coordinate)
+    , cells : List Coordinate
     }
 
 
@@ -241,7 +233,7 @@ tick millis gameGridModel =
                 , gridCells = []
                 }
 
-        Initialised model ->
+        Initialised _ ->
             gameGridModel
 
 
@@ -343,21 +335,95 @@ cellIsDead cell =
             False
 
 
-all : { i : TetrominoShape }
-all =
-    { i = i
-    }
-
-
-i : TetrominoShape
+i : Tetromino
 i =
-    { width = 4
-    , height = 4
-    , block = Red
-    , orientations = []
+    { size = 4
+    , block = Cyan
+    , cells = [ Coordinate 0 1, Coordinate 1 1, Coordinate 2 1, Coordinate 3 1 ]
     }
+
+
+o : Tetromino
+o =
+    { size = 4
+    , block = Yellow
+    , cells = [ Coordinate 1 1, Coordinate 2 1, Coordinate 1 2, Coordinate 2 2 ]
+    }
+
+
+t : Tetromino
+t =
+    { size = 3
+    , block = Magenta
+    , cells = [ Coordinate 0 0, Coordinate 1 0, Coordinate 2 0, Coordinate 1 1 ]
+    }
+
+
+l : Tetromino
+l =
+    { size = 3
+    , block = Orange
+    , cells = [ Coordinate 1 0, Coordinate 1 1, Coordinate 1 2, Coordinate 2 2 ]
+    }
+
+
+j : Tetromino
+j =
+    { size = 3
+    , block = Blue
+    , cells = [ Coordinate 1 0, Coordinate 1 1, Coordinate 1 2, Coordinate 0 2 ]
+    }
+
+
+s : Tetromino
+s =
+    { size = 3
+    , block = Green
+    , cells = [ Coordinate 0 1, Coordinate 1 1, Coordinate 1 0, Coordinate 2 0 ]
+    }
+
+
+z : Tetromino
+z =
+    { size = 3
+    , block = Red
+    , cells = [ Coordinate 0 0, Coordinate 1 0, Coordinate 1 1, Coordinate 2 1 ]
+    }
+
+
+tetrominoes :
+    { i : Tetromino
+    , o : Tetromino
+    , t : Tetromino
+    , l : Tetromino
+    , j : Tetromino
+    , s : Tetromino
+    , z : Tetromino
+    }
+tetrominoes =
+    { i = i, o = o, t = t, l = l, j = j, s = s, z = z }
 
 
 randomTetromino : Int -> Tetromino
 randomTetromino seed =
-    Tetromino i R0
+    case seed |> modBy 7 of
+        0 ->
+            i
+
+        1 ->
+            o
+
+        2 ->
+            t
+
+        3 ->
+            l
+
+        4 ->
+            j
+
+        5 ->
+            s
+
+        _ ->
+            z

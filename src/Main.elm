@@ -3,7 +3,7 @@ module Main exposing (Model, Msg(..), initModel, main, subscriptions, update, vi
 import Browser
 import Browser.Dom as Dom
 import Browser.Events as Browser
-import GameGrid exposing (Msg, tick)
+import GameGrid exposing (Msg)
 import Html exposing (button, div, h1, h3, text)
 import Html.Attributes exposing (class, id)
 import Html.Events exposing (onClick)
