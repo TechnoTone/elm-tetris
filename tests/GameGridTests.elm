@@ -8,6 +8,7 @@ import GameGrid
         , GameGridModel(..)
         , Tetromino
         )
+import Html.Attributes exposing (poster)
 import Test exposing (Test, describe, fuzz, test)
 
 
@@ -69,6 +70,46 @@ tetrominoRotation =
                 |> GameGrid.rotateTetrominoCells
                 |> GameGrid.rotateTetrominoCells
                 |> equal [ xy 0 1, xy 1 1, xy 2 1, xy 3 1 ]
+                |> always
+            )
+        ]
+
+
+tetrominoMovement : Test
+tetrominoMovement =
+    let
+        tetrominoInPlay =
+            { tetromino = GameGrid.tetrominoes.i
+            , position = xy 5 5
+            }
+    in
+    describe "Tetromino Movement"
+        [ test "move left"
+            (tetrominoInPlay
+                |> GameGrid.moveLeft
+                |> .position
+                |> equal (xy 4 5)
+                |> always
+            )
+        , test "move right"
+            (tetrominoInPlay
+                |> GameGrid.moveRight
+                |> .position
+                |> equal (xy 6 5)
+                |> always
+            )
+        , test "move down"
+            (tetrominoInPlay
+                |> GameGrid.moveDown
+                |> .position
+                |> equal (xy 5 6)
+                |> always
+            )
+        , test "move up"
+            (tetrominoInPlay
+                |> GameGrid.moveUp
+                |> .position
+                |> equal (xy 5 4)
                 |> always
             )
         ]

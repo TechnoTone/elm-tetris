@@ -11,6 +11,10 @@ module GameGrid exposing
     , handleAction
     , init
     , mergeTetrominoInPlay
+    , moveDown
+    , moveLeft
+    , moveRight
+    , moveUp
     , randomTetromino
     , rotateTetromino
     , rotateTetrominoCells
@@ -282,6 +286,51 @@ rotateTetromino tetromino =
 rotateTetrominoCells : List Coordinate -> List Coordinate
 rotateTetrominoCells cells =
     cells |> List.map (\{ col, row } -> Coordinate (3 - row) col)
+
+
+moveLeft : TetrominoInPlay -> TetrominoInPlay
+moveLeft =
+    updateCoordinate translateLeft
+
+
+moveRight : TetrominoInPlay -> TetrominoInPlay
+moveRight =
+    updateCoordinate translateRight
+
+
+moveDown : TetrominoInPlay -> TetrominoInPlay
+moveDown =
+    updateCoordinate translateDown
+
+
+moveUp : TetrominoInPlay -> TetrominoInPlay
+moveUp =
+    updateCoordinate translateUp
+
+
+updateCoordinate : (Coordinate -> Coordinate) -> TetrominoInPlay -> TetrominoInPlay
+updateCoordinate fn tetrominoInPlay =
+    { tetrominoInPlay | position = fn tetrominoInPlay.position }
+
+
+translateLeft : Coordinate -> Coordinate
+translateLeft { col, row } =
+    Coordinate (col - 1) row
+
+
+translateRight : Coordinate -> Coordinate
+translateRight { col, row } =
+    Coordinate (col + 1) row
+
+
+translateDown : Coordinate -> Coordinate
+translateDown { col, row } =
+    Coordinate col (row + 1)
+
+
+translateUp : Coordinate -> Coordinate
+translateUp { col, row } =
+    Coordinate col (row - 1)
 
 
 mergeTetrominoInPlay : TetrominoInPlay -> List GridCell -> List GridCell
