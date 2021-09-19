@@ -4,9 +4,9 @@ import Expect exposing (equal)
 import Fuzz exposing (int, list)
 import GameGrid
     exposing
-        ( Colour(..)
-        , CurrentTetromino(..)
+        ( CurrentTetromino(..)
         , GameGridModel(..)
+        , Tetromino
         )
 import Test exposing (Test, describe, fuzz, test)
 
@@ -69,6 +69,30 @@ tetrominoRotation =
                 |> GameGrid.rotateTetrominoCells
                 |> GameGrid.rotateTetrominoCells
                 |> equal [ xy 0 1, xy 1 1, xy 2 1, xy 3 1 ]
+                |> always
+            )
+        ]
+
+
+gameGrid : Test
+gameGrid =
+    let
+        tetrominoInPlay =
+            { tetromino = GameGrid.tetrominoes.i
+            , position = xy 0 0
+            }
+
+        toGridCell : Tetromino -> coordinate -> { cell : GameGrid.Cell, position : coordinate }
+        toGridCell tetromino coordinate =
+            { cell = GameGrid.Alive tetromino.colour
+            , position = coordinate
+            }
+    in
+    describe "GameGrid"
+        [ test "merges TetrominoInPlay"
+            ([]
+                |> GameGrid.mergeTetrominoInPlay tetrominoInPlay
+                |> equal (List.map (toGridCell tetrominoInPlay.tetromino) [ xy 0 1, xy 1 1, xy 2 1, xy 3 1 ])
                 |> always
             )
         ]

@@ -3,13 +3,14 @@
 
 
 module GameGrid exposing
-    ( Colour(..)
+    ( Cell(..)
     , CurrentTetromino(..)
     , GameGridModel(..)
     , Msg
     , Tetromino
     , handleAction
     , init
+    , mergeTetrominoInPlay
     , randomTetromino
     , rotateTetromino
     , rotateTetrominoCells
@@ -100,7 +101,7 @@ type Colour
 
 type alias Tetromino =
     { size : Int
-    , block : Colour
+    , colour : Colour
     , cells : List Coordinate
     }
 
@@ -283,6 +284,32 @@ rotateTetrominoCells cells =
     cells |> List.map (\{ col, row } -> Coordinate (3 - row) col)
 
 
+mergeTetrominoInPlay : TetrominoInPlay -> List GridCell -> List GridCell
+mergeTetrominoInPlay tetrominoInPlay gridCells =
+    let
+        translation : Coordinate
+        translation =
+            tetrominoInPlay.position
+
+        translatedCoordinates : List Coordinate
+        translatedCoordinates =
+            tetrominoInPlay.tetromino.cells
+                |> List.map
+                    (\{ col, row } ->
+                        Coordinate (col + translation.col) (row + translation.row)
+                    )
+
+        toGridCell : Coordinate -> GridCell
+        toGridCell =
+            GridCell (Alive tetrominoInPlay.tetromino.colour)
+
+        newGridCells : List GridCell
+        newGridCells =
+            translatedCoordinates |> List.map toGridCell
+    in
+    gridCells ++ newGridCells
+
+
 
 {-
     @@@@  @@@@@@ @@@@@@ @@@@@@ @@@@@@ @@@@@   @@@@
@@ -349,7 +376,7 @@ cellIsDead cell =
 i : Tetromino
 i =
     { size = 4
-    , block = Cyan
+    , colour = Cyan
     , cells = [ Coordinate 0 1, Coordinate 1 1, Coordinate 2 1, Coordinate 3 1 ]
     }
 
@@ -357,7 +384,7 @@ i =
 o : Tetromino
 o =
     { size = 4
-    , block = Yellow
+    , colour = Yellow
     , cells = [ Coordinate 1 1, Coordinate 2 1, Coordinate 1 2, Coordinate 2 2 ]
     }
 
@@ -365,7 +392,7 @@ o =
 t : Tetromino
 t =
     { size = 3
-    , block = Magenta
+    , colour = Magenta
     , cells = [ Coordinate 0 0, Coordinate 1 0, Coordinate 2 0, Coordinate 1 1 ]
     }
 
@@ -373,7 +400,7 @@ t =
 l : Tetromino
 l =
     { size = 3
-    , block = Orange
+    , colour = Orange
     , cells = [ Coordinate 1 0, Coordinate 1 1, Coordinate 1 2, Coordinate 2 2 ]
     }
 
@@ -381,7 +408,7 @@ l =
 j : Tetromino
 j =
     { size = 3
-    , block = Blue
+    , colour = Blue
     , cells = [ Coordinate 1 0, Coordinate 1 1, Coordinate 1 2, Coordinate 0 2 ]
     }
 
@@ -389,7 +416,7 @@ j =
 s : Tetromino
 s =
     { size = 3
-    , block = Green
+    , colour = Green
     , cells = [ Coordinate 0 1, Coordinate 1 1, Coordinate 1 0, Coordinate 2 0 ]
     }
 
@@ -397,7 +424,7 @@ s =
 z : Tetromino
 z =
     { size = 3
-    , block = Red
+    , colour = Red
     , cells = [ Coordinate 0 0, Coordinate 1 0, Coordinate 1 1, Coordinate 2 1 ]
     }
 
