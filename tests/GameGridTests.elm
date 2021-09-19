@@ -36,12 +36,46 @@ tetrominoRandomisation =
 tetrominoRotation : Test
 tetrominoRotation =
     describe "Tetromino Rotation"
-        [ test "default" (GameGrid.tetrominoes.i.cells |> equal [ xy 0 1, xy 1 1, xy 2 1, xy 3 1 ] |> always)
+        [ test "not rotated"
+            (GameGrid.tetrominoes.i.cells
+                |> equal [ xy 0 1, xy 1 1, xy 2 1, xy 3 1 ]
+                |> always
+            )
+        , test "rotated once"
+            (GameGrid.tetrominoes.i.cells
+                |> GameGrid.rotateTetrominoCells
+                |> equal [ xy 2 0, xy 2 1, xy 2 2, xy 2 3 ]
+                |> always
+            )
+        , test "rotated twice"
+            (GameGrid.tetrominoes.i.cells
+                |> GameGrid.rotateTetrominoCells
+                |> GameGrid.rotateTetrominoCells
+                |> equal [ xy 3 2, xy 2 2, xy 1 2, xy 0 2 ]
+                |> always
+            )
+        , test "rotated three times"
+            (GameGrid.tetrominoes.i.cells
+                |> GameGrid.rotateTetrominoCells
+                |> GameGrid.rotateTetrominoCells
+                |> GameGrid.rotateTetrominoCells
+                |> equal [ xy 1 3, xy 1 2, xy 1 1, xy 1 0 ]
+                |> always
+            )
+        , test "rotated four times"
+            (GameGrid.tetrominoes.i.cells
+                |> GameGrid.rotateTetrominoCells
+                |> GameGrid.rotateTetrominoCells
+                |> GameGrid.rotateTetrominoCells
+                |> GameGrid.rotateTetrominoCells
+                |> equal [ xy 0 1, xy 1 1, xy 2 1, xy 3 1 ]
+                |> always
+            )
         ]
 
 
 {-| Helper function to create GameGrid Coordinates.
 -}
-xy : Int -> Int -> GameGrid.Coordinate
-xy =
-    GameGrid.Coordinate
+xy : Int -> Int -> { col : Int, row : Int }
+xy x y =
+    { col = x, row = y }

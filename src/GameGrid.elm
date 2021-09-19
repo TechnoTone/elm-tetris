@@ -4,7 +4,6 @@
 
 module GameGrid exposing
     ( Colour(..)
-    , Coordinate
     , CurrentTetromino(..)
     , GameGridModel(..)
     , Msg
@@ -12,6 +11,8 @@ module GameGrid exposing
     , handleAction
     , init
     , randomTetromino
+    , rotateTetromino
+    , rotateTetrominoCells
     , tetrominoes
     , tick
     , update
@@ -270,6 +271,16 @@ handleAction action model =
 
         PlayerAction.None ->
             model
+
+
+rotateTetromino : Tetromino -> Tetromino
+rotateTetromino tetromino =
+    { tetromino | cells = rotateTetrominoCells tetromino.cells }
+
+
+rotateTetrominoCells : List Coordinate -> List Coordinate
+rotateTetrominoCells cells =
+    cells |> List.map (\{ col, row } -> Coordinate (3 - row) col)
 
 
 
