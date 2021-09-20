@@ -8,7 +8,6 @@ import GameGrid
         , GameGridModel(..)
         , Tetromino
         )
-import Html.Attributes exposing (poster)
 import Test exposing (Test, describe, fuzz, test)
 
 
@@ -118,24 +117,82 @@ tetrominoMovement =
 gameGrid : Test
 gameGrid =
     let
-        tetrominoInPlay =
-            { tetromino = GameGrid.tetrominoes.i
-            , position = xy 0 0
+        singleCellTetromino =
+            { tetromino = Tetromino 1 GameGrid.tetrominoes.i.colour [ xy 0 0 ]
+            , position = xy 5 5
             }
 
-        toGridCell : Tetromino -> coordinate -> { cell : GameGrid.Cell, position : coordinate }
-        toGridCell tetromino coordinate =
-            { cell = GameGrid.Alive tetromino.colour
+        toGridCell : coordinate -> { cell : GameGrid.Cell, position : coordinate }
+        toGridCell coordinate =
+            { cell = GameGrid.Alive GameGrid.tetrominoes.i.colour
             , position = coordinate
             }
     in
     describe "GameGrid"
         [ test "merges TetrominoInPlay"
             ([]
-                |> GameGrid.mergeTetrominoInPlay tetrominoInPlay
-                |> equal (List.map (toGridCell tetrominoInPlay.tetromino) [ xy 0 1, xy 1 1, xy 2 1, xy 3 1 ])
+                |> GameGrid.mergeTetrominoInPlay singleCellTetromino
+                |> equal (List.map toGridCell [ xy 5 5 ])
                 |> always
             )
+        , describe "identifies valid tetromino position"
+            [ test "when tetromino is on the grid"
+                ([]
+                    |> GameGrid.validTetrominoPosition singleCellTetromino
+                    |> equal True
+                    |> always
+                )
+            , test "when tetromino is out of bounds to the top"
+                ([]
+                    |> GameGrid.validTetrominoPosition
+                        (singleCellTetromino
+                            |> GameGrid.moveUp
+                            |> GameGrid.moveUp
+                            |> GameGrid.moveUp
+                            |> GameGrid.moveUp
+                            |> GameGrid.moveUp
+                            |> GameGrid.moveUp
+                        )
+                    |> equal True
+                    |> always
+                )
+            ]
+        , describe "identifies invalid tetromino position"
+            [ test "out of bounds to the left"
+                ([]
+                    |> GameGrid.validTetrominoPosition
+                        (singleCellTetromino
+                            |> GameGrid.moveLeft
+                            |> GameGrid.moveLeft
+                            |> GameGrid.moveLeft
+                            |> GameGrid.moveLeft
+                            |> GameGrid.moveLeft
+                            |> GameGrid.moveLeft
+                        )
+                    |> equal False
+                    |> always
+                )
+            , test "out of bounds to the right"
+                ([]
+                    |> GameGrid.validTetrominoPosition
+                        (singleCellTetromino
+                            |> GameGrid.moveRight
+                            |> GameGrid.moveRight
+                            |> GameGrid.moveRight
+                            |> GameGrid.moveRight
+                            |> GameGrid.moveRight
+                        )
+                    |> equal False
+                    |> always
+                )
+            , test "collides with existing cells"
+                ([]
+                    |> GameGrid.mergeTetrominoInPlay singleCellTetromino
+                    |> GameGrid.validTetrominoPosition singleCellTetromino
+                    |> equal False
+                    |> always
+                )
+            ]
         ]
 
 

@@ -9,6 +9,7 @@ module GameGrid exposing
     , Msg
     , Tetromino
     , handleAction
+    , height
     , init
     , mergeTetrominoInPlay
     , moveDown
@@ -21,7 +22,9 @@ module GameGrid exposing
     , tetrominoes
     , tick
     , update
+    , validTetrominoPosition
     , view
+    , width
     )
 
 import Html exposing (Html, div, text)
@@ -333,30 +336,22 @@ translateUp { col, row } =
     Coordinate col (row - 1)
 
 
+absoluteCells : TetrominoInPlay -> List Coordinate
+absoluteCells { tetromino, position } =
+    tetromino.cells
+        |> List.map
+            (\{ col, row } ->
+                Coordinate (col + position.col) (row + position.row)
+            )
+
+
 mergeTetrominoInPlay : TetrominoInPlay -> List GridCell -> List GridCell
 mergeTetrominoInPlay tetrominoInPlay gridCells =
-    let
-        translation : Coordinate
-        translation =
-            tetrominoInPlay.position
-
-        translatedCoordinates : List Coordinate
-        translatedCoordinates =
-            tetrominoInPlay.tetromino.cells
-                |> List.map
-                    (\{ col, row } ->
-                        Coordinate (col + translation.col) (row + translation.row)
-                    )
-
-        toGridCell : Coordinate -> GridCell
-        toGridCell =
-            GridCell (Alive tetrominoInPlay.tetromino.colour)
-
-        newGridCells : List GridCell
-        newGridCells =
-            translatedCoordinates |> List.map toGridCell
-    in
-    gridCells ++ newGridCells
+    gridCells
+        ++ (tetrominoInPlay
+                |> absoluteCells
+                |> List.map (GridCell (Alive tetrominoInPlay.tetromino.colour))
+           )
 
 
 
@@ -394,7 +389,18 @@ getCell model position =
 
 isValidCoordinate : Coordinate -> Bool
 isValidCoordinate { col, row } =
-    col >= 0 && col < width && row >= 0 && row < height
+    col >= 0 && col < width && row < height
+
+
+validTetrominoPosition : TetrominoInPlay -> List GridCell -> Bool
+validTetrominoPosition tetrominoInPlay gridCells =
+    tetrominoInPlay
+        |> absoluteCells
+        |> List.all
+            (\pos ->
+                isValidCoordinate pos
+                    && not (List.any (\gc -> gc.position == pos) gridCells)
+            )
 
 
 cellIsEmpty : Cell -> Bool
