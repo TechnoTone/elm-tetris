@@ -132,7 +132,7 @@ gameGrid =
         [ test "merges TetrominoInPlay"
             ([]
                 |> GameGrid.mergeTetrominoInPlay singleCellTetromino
-                |> equal (List.map toGridCell [ xy 5 5 ])
+                |> equal [ toGridCell (xy 5 5) ]
                 |> always
             )
         , describe "identifies valid tetromino position"
