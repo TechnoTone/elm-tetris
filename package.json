@@ -2,18 +2,16 @@
   "name": "elm-tetris",
   "version": "1.0.0",
   "scripts": {
-    "start": "parcel",
+    "start": "parcel index.html",
     "test": "elm-test --watch"
   },
   "author": "Tony Hunt",
   "source": "index.html",
   "devDependencies": {
-    "@parcel/transformer-elm": "^2.0.0-rc.0",
-    "@parcel/transformer-less": "^2.0.0-rc.0",
     "elm": "^0.19.1-5",
+    "elm-hot": "^1.1.6",
     "less": "^4.1.1",
     "node-elm-compiler": "^5.0.6",
-    "parcel": "^2.0.0-rc.0",
-    "parcel-plugin-static-files-copy": "^2.6.0"
+    "parcel-bundler": "^1.12.5"
   }
 }
