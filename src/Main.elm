@@ -9,7 +9,6 @@ import Html.Attributes exposing (class, id)
 import Html.Events exposing (onClick)
 import Html.Events.Extra.Touch as Touch exposing (Touch)
 import Json.Decode as Decode
-import List.Extra as List
 import PlayerAction
 import Task
 import Time

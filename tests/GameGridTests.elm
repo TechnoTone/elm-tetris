@@ -1,7 +1,7 @@
 module GameGridTests exposing (..)
 
 import Expect exposing (equal)
-import Fuzz exposing (int, list)
+import Fuzz exposing (int)
 import GameGrid exposing (GameGridModel(..))
 import GameGridTypes exposing (Cell(..), Tetromino)
 import Test exposing (Test, describe, fuzz, test)
