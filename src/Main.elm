@@ -67,7 +67,7 @@ type TouchEventType
 initModel : () -> ( Model, Cmd Msg )
 initModel =
     always <|
-        ( { gameGrid = GameGrid.init
+        ( { gameGrid = GameGrid.uninitialised
           , gamePhase = TitleScreen
           , gameData = defaultGameData
           , touches = []
@@ -168,7 +168,7 @@ update msg model =
             ( fn model, Cmd.none )
 
         startGame =
-            setGameGrid GameGrid.init >> setGameData defaultGameData >> setPhase Playing
+            setGameGrid GameGrid.uninitialised >> setGameData defaultGameData >> setPhase Playing
     in
     case ( msg, model.gamePhase ) of
         ( GotViewport viewPort, _ ) ->

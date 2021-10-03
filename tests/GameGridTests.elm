@@ -2,12 +2,8 @@ module GameGridTests exposing (..)
 
 import Expect exposing (equal)
 import Fuzz exposing (int, list)
-import GameGrid
-    exposing
-        ( CurrentTetromino(..)
-        , GameGridModel(..)
-        , Tetromino
-        )
+import GameGrid exposing (GameGridModel(..))
+import GameGridTypes exposing (Cell(..), Tetromino)
 import Test exposing (Test, describe, fuzz, test)
 
 
@@ -122,9 +118,9 @@ gameGrid =
             , position = xy 5 5
             }
 
-        toGridCell : coordinate -> { cell : GameGrid.Cell, position : coordinate }
+        toGridCell : coordinate -> { cell : Cell, position : coordinate }
         toGridCell coordinate =
-            { cell = GameGrid.Alive GameGrid.tetrominoes.i.colour
+            { cell = Alive GameGrid.tetrominoes.i.colour
             , position = coordinate
             }
     in

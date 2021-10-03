@@ -3,14 +3,10 @@
 
 
 module GameGrid exposing
-    ( Cell(..)
-    , CurrentTetromino(..)
-    , GameGridModel(..)
+    ( GameGridModel(..)
     , Msg
-    , Tetromino
     , handleAction
     , height
-    , init
     , mergeTetrominoInPlay
     , moveDown
     , moveLeft
@@ -21,12 +17,14 @@ module GameGrid exposing
     , rotateTetrominoCells
     , tetrominoes
     , tick
+    , uninitialised
     , update
     , validTetrominoPosition
     , view
     , width
     )
 
+import GameGridTypes exposing (Cell(..), Colour(..), Coordinate, CurrentTetromino(..), GridCell, Model, Tetromino, TetrominoInPlay)
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (on)
@@ -44,8 +42,8 @@ import PlayerAction
 -}
 
 
-init : GameGridModel
-init =
+uninitialised : GameGridModel
+uninitialised =
     Uninitialised
 
 
@@ -54,63 +52,8 @@ type GameGridModel
     | Initialised Model
 
 
-type alias Model =
-    { current : CurrentTetromino
-    , next : Tetromino
-    , gridCells : List GridCell
-    }
-
-
-type CurrentTetromino
-    = NoTetromino
-    | InPlay TetrominoInPlay
-    | Landed TetrominoInPlay
-
-
-type alias TetrominoInPlay =
-    { tetromino : Tetromino
-    , position : Coordinate
-    }
-
-
-type alias GridCell =
-    { cell : Cell
-    , position : Coordinate
-    }
-
-
-type Cell
-    = Empty
-    | Alive Colour
-    | Dead Colour
-    | OutOfBounds
-
-
-type alias Coordinate =
-    { col : Int
-    , row : Int
-    }
-
-
 type Msg
     = DeadCellAnimationEnd Coordinate
-
-
-type Colour
-    = Cyan
-    | Yellow
-    | Magenta
-    | Orange
-    | Green
-    | Blue
-    | Red
-
-
-type alias Tetromino =
-    { size : Int
-    , colour : Colour
-    , cells : List Coordinate
-    }
 
 
 
