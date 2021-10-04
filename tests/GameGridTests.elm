@@ -3,7 +3,7 @@ module GameGridTests exposing (..)
 import Expect exposing (equal)
 import Fuzz exposing (int)
 import GameGrid exposing (GameGridModel(..))
-import GameGridTypes exposing (Cell(..), Tetromino)
+import GameGridTypes exposing (Cell(..), Coordinate, Tetromino)
 import Test exposing (Test, describe, fuzz, test)
 
 
@@ -32,41 +32,88 @@ tetrominoRandomisation =
 tetrominoRotation : Test
 tetrominoRotation =
     describe "Tetromino Rotation"
-        [ test "not rotated"
-            (GameGrid.tetrominoes.i.cells
-                |> equal [ xy 0 1, xy 1 1, xy 2 1, xy 3 1 ]
-                |> always
-            )
-        , test "rotated once"
-            (GameGrid.tetrominoes.i.cells
-                |> GameGrid.rotateTetrominoCells
-                |> equal [ xy 2 0, xy 2 1, xy 2 2, xy 2 3 ]
-                |> always
-            )
-        , test "rotated twice"
-            (GameGrid.tetrominoes.i.cells
-                |> GameGrid.rotateTetrominoCells
-                |> GameGrid.rotateTetrominoCells
-                |> equal [ xy 3 2, xy 2 2, xy 1 2, xy 0 2 ]
-                |> always
-            )
-        , test "rotated three times"
-            (GameGrid.tetrominoes.i.cells
-                |> GameGrid.rotateTetrominoCells
-                |> GameGrid.rotateTetrominoCells
-                |> GameGrid.rotateTetrominoCells
-                |> equal [ xy 1 3, xy 1 2, xy 1 1, xy 1 0 ]
-                |> always
-            )
-        , test "rotated four times"
-            (GameGrid.tetrominoes.i.cells
-                |> GameGrid.rotateTetrominoCells
-                |> GameGrid.rotateTetrominoCells
-                |> GameGrid.rotateTetrominoCells
-                |> GameGrid.rotateTetrominoCells
-                |> equal [ xy 0 1, xy 1 1, xy 2 1, xy 3 1 ]
-                |> always
-            )
+        [ describe "Size 4 Tetromino"
+            [ test "not rotated"
+                (GameGrid.tetrominoes.i.cells
+                    |> equal [ xy 0 1, xy 1 1, xy 2 1, xy 3 1 ]
+                    |> always
+                )
+            , test "rotated once"
+                (GameGrid.tetrominoes.i
+                    |> GameGrid.rotateTetromino
+                    |> .cells
+                    |> equal [ xy 2 0, xy 2 1, xy 2 2, xy 2 3 ]
+                    |> always
+                )
+            , test "rotated twice"
+                (GameGrid.tetrominoes.i
+                    |> GameGrid.rotateTetromino
+                    |> GameGrid.rotateTetromino
+                    |> .cells
+                    |> equal [ xy 3 2, xy 2 2, xy 1 2, xy 0 2 ]
+                    |> always
+                )
+            , test "rotated three times"
+                (GameGrid.tetrominoes.i
+                    |> GameGrid.rotateTetromino
+                    |> GameGrid.rotateTetromino
+                    |> GameGrid.rotateTetromino
+                    |> .cells
+                    |> equal [ xy 1 3, xy 1 2, xy 1 1, xy 1 0 ]
+                    |> always
+                )
+            , test "rotated four times"
+                (GameGrid.tetrominoes.i
+                    |> GameGrid.rotateTetromino
+                    |> GameGrid.rotateTetromino
+                    |> GameGrid.rotateTetromino
+                    |> GameGrid.rotateTetromino
+                    |> .cells
+                    |> equal [ xy 0 1, xy 1 1, xy 2 1, xy 3 1 ]
+                    |> always
+                )
+            ]
+        , describe "Size 3 Tetromino"
+            [ test "not rotated"
+                (GameGrid.tetrominoes.s.cells
+                    |> equal [ xy 0 1, xy 1 1, xy 1 0, xy 2 0 ]
+                    |> always
+                )
+            , test "rotated once"
+                (GameGrid.tetrominoes.s
+                    |> GameGrid.rotateTetromino
+                    |> .cells
+                    |> equal [ xy 1 0, xy 1 1, xy 2 1, xy 2 2 ]
+                    |> always
+                )
+            , test "rotated twice"
+                (GameGrid.tetrominoes.s
+                    |> GameGrid.rotateTetromino
+                    |> GameGrid.rotateTetromino
+                    |> .cells
+                    |> equal [ xy 2 1, xy 1 1, xy 1 2, xy 0 2 ]
+                    |> always
+                )
+            , test "rotated three times"
+                (GameGrid.tetrominoes.s
+                    |> GameGrid.rotateTetromino
+                    |> GameGrid.rotateTetromino
+                    |> GameGrid.rotateTetromino
+                    |> .cells
+                    |> equal [ xy 1 2, xy 1 1, xy 0 1, xy 0 0 ]
+                    |> always
+                )
+            , test "rotated four times"
+                (GameGrid.tetrominoes.s
+                    |> GameGrid.rotateTetromino
+                    |> GameGrid.rotateTetromino
+                    |> GameGrid.rotateTetromino
+                    |> GameGrid.rotateTetromino
+                    |> .cells
+                    |> equal [ xy 0 1, xy 1 1, xy 1 0, xy 2 0 ]
+                    |> always
+                )
+            ]
         ]
 
 
@@ -192,8 +239,8 @@ gameGrid =
         ]
 
 
-{-| Helper function to create GameGrid Coordinates.
+{-| Helper function to create Coordinates.
 -}
-xy : Int -> Int -> { col : Int, row : Int }
-xy x y =
-    { col = x, row = y }
+xy : Int -> Int -> Coordinate
+xy =
+    Coordinate

@@ -14,7 +14,6 @@ module GameGrid exposing
     , moveUp
     , randomTetromino
     , rotateTetromino
-    , rotateTetrominoCells
     , tetrominoes
     , tick
     , uninitialised
@@ -226,12 +225,12 @@ handleAction action model =
 
 rotateTetromino : Tetromino -> Tetromino
 rotateTetromino tetromino =
-    { tetromino | cells = rotateTetrominoCells tetromino.cells }
+    { tetromino | cells = rotateTetrominoCells tetromino.size tetromino.cells }
 
 
-rotateTetrominoCells : List Coordinate -> List Coordinate
-rotateTetrominoCells cells =
-    cells |> List.map (\{ col, row } -> Coordinate (3 - row) col)
+rotateTetrominoCells : Int -> List Coordinate -> List Coordinate
+rotateTetrominoCells size cells =
+    cells |> List.map (\{ col, row } -> Coordinate (size - 1 - row) col)
 
 
 moveLeft : TetrominoInPlay -> TetrominoInPlay
