@@ -184,8 +184,19 @@ tick millis gameGridModel =
                 , gridCells = []
                 }
 
-        Initialised _ ->
-            gameGridModel
+        Initialised model ->
+            case model.current of
+                NoTetromino ->
+                    model
+                        |> putNextTetrominoInPlay
+                        |> setNextTetromino (randomTetromino millis)
+                        |> Initialised
+
+                InPlay tetrominoInPlay ->
+                    Initialised model
+
+                Landed tetrominoInPlay ->
+                    Initialised model
 
 
 setNextTetromino : Tetromino -> Model -> Model
@@ -193,8 +204,8 @@ setNextTetromino next model =
     { model | next = next }
 
 
-setNextToCurrent : Model -> Model
-setNextToCurrent model =
+putNextTetrominoInPlay : Model -> Model
+putNextTetrominoInPlay model =
     { model | current = InPlay (TetrominoInPlay model.next (Coordinate 0 0)) }
 
 
@@ -287,6 +298,19 @@ absoluteCells { tetromino, position } =
             )
 
 
+mergeCurrentTetromino : CurrentTetromino -> List GridCell -> List GridCell
+mergeCurrentTetromino currentTetromino gridCells =
+    case currentTetromino of
+        NoTetromino ->
+            gridCells
+
+        InPlay tetrominoInPlay ->
+            mergeTetrominoInPlay tetrominoInPlay gridCells
+
+        Landed tetrominoInPlay ->
+            mergeTetrominoInPlay tetrominoInPlay gridCells
+
+
 mergeTetrominoInPlay : TetrominoInPlay -> List GridCell -> List GridCell
 mergeTetrominoInPlay tetrominoInPlay gridCells =
     gridCells
@@ -320,6 +344,7 @@ getCell : Model -> Coordinate -> Cell
 getCell model position =
     if isValidCoordinate position then
         model.gridCells
+            |> mergeCurrentTetromino model.current
             |> List.filter (\gc -> gc.position == position)
             |> List.head
             |> Maybe.map .cell
