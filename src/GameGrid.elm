@@ -206,7 +206,30 @@ setNextTetromino next model =
 
 putNextTetrominoInPlay : Model -> Model
 putNextTetrominoInPlay model =
-    { model | current = InPlay (TetrominoInPlay model.next (Coordinate 0 0)) }
+    let
+        bottomRow =
+            model.next.cells
+                |> List.map .row
+                |> List.maximum
+                |> Maybe.withDefault 0
+
+        bottomCellAverage =
+            model.next.cells
+                |> List.filter (.row >> (==) bottomRow)
+                |> List.map .col
+                |> List.foldl
+                    (\n acc ->
+                        ( Tuple.first acc + 1, Tuple.second acc + n )
+                    )
+                    ( 0, 0 )
+                |> (\( count, sum ) -> sum // count)
+
+        position =
+            Coordinate
+                ((width // 2) - bottomCellAverage - 1)
+                (0 - bottomRow)
+    in
+    { model | current = InPlay (TetrominoInPlay model.next position) }
 
 
 handleAction : PlayerAction.Action -> GameGridModel -> GameGridModel
