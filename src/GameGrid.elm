@@ -190,7 +190,7 @@ tick millis gameGridModel =
                         tickWhenInPlay millis tetrominoInPlay model
 
                     Landed tetrominoInPlay ->
-                        model
+                        tickWhenLanded millis tetrominoInPlay model
 
 
 initialise : Int -> Model
@@ -213,13 +213,37 @@ tickWhenNoTetromino millis model =
 tickWhenInPlay : Int -> TetrominoInPlay -> Model -> Model
 tickWhenInPlay millis tetrominoInPlay model =
     if timeToDrop model millis then
-        tetrominoInPlay
-            |> moveDown
-            |> updateTetrominoInPlay model
-            |> setTimestamp millis
+        if tetrominoCanDrop tetrominoInPlay model then
+            tetrominoInPlay
+                |> moveDown
+                |> updateTetrominoInPlay model
+                |> setTimestamp millis
+
+        else
+            tetrominoInPlay
+                |> landTetrominoInPlay model
+                |> setTimestamp millis
 
     else
         model
+
+
+tickWhenLanded : Int -> TetrominoInPlay -> Model -> Model
+tickWhenLanded millis tetrominoInPlay model =
+    mergeTetrominoInPlay tetrominoInPlay model.gridCells
+        |> updateGridCells model
+        |> clearCurrentTetromino
+        |> setTimestamp millis
+
+
+updateGridCells : Model -> List GridCell -> Model
+updateGridCells model gridCells =
+    { model | gridCells = gridCells }
+
+
+clearCurrentTetromino : Model -> Model
+clearCurrentTetromino model =
+    { model | current = NoTetromino }
 
 
 timeToDrop : Model -> Int -> Bool
@@ -227,9 +251,19 @@ timeToDrop model millis =
     millis >= model.timestamp + dropDelay
 
 
+tetrominoCanDrop : TetrominoInPlay -> Model -> Bool
+tetrominoCanDrop tetrominoInPlay { gridCells } =
+    validTetrominoPosition (moveDown tetrominoInPlay) gridCells
+
+
 updateTetrominoInPlay : Model -> TetrominoInPlay -> Model
 updateTetrominoInPlay model tetrominoInPlay =
     { model | current = InPlay tetrominoInPlay }
+
+
+landTetrominoInPlay : Model -> TetrominoInPlay -> Model
+landTetrominoInPlay model tetrominoInPlay =
+    { model | current = Landed tetrominoInPlay }
 
 
 setTimestamp : Int -> Model -> Model
