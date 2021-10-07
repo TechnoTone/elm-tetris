@@ -5,6 +5,7 @@ type alias Model =
     { current : CurrentTetromino
     , next : Tetromino
     , gridCells : List GridCell
+    , timestamp : Int
     }
 
 

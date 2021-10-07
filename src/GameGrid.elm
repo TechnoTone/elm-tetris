@@ -178,11 +178,12 @@ tick : Int -> GameGridModel -> GameGridModel
 tick millis gameGridModel =
     case gameGridModel of
         Uninitialised ->
-            Initialised
-                { current = NoTetromino
-                , next = randomTetromino millis
-                , gridCells = []
-                }
+            Initialised <|
+                Model
+                    NoTetromino
+                    (randomTetromino millis)
+                    []
+                    millis
 
         Initialised model ->
             case model.current of
@@ -190,13 +191,37 @@ tick millis gameGridModel =
                     model
                         |> putNextTetrominoInPlay
                         |> setNextTetromino (randomTetromino millis)
+                        |> setTimestamp millis
                         |> Initialised
 
                 InPlay tetrominoInPlay ->
-                    Initialised model
+                    if timeToDrop model millis then
+                        tetrominoInPlay
+                            |> moveDown
+                            |> updateTetrominoInPlay model
+                            |> setTimestamp millis
+                            |> Initialised
+
+                    else
+                        Initialised model
 
                 Landed tetrominoInPlay ->
                     Initialised model
+
+
+timeToDrop : Model -> Int -> Bool
+timeToDrop model millis =
+    millis >= model.timestamp + dropDelay
+
+
+updateTetrominoInPlay : Model -> TetrominoInPlay -> Model
+updateTetrominoInPlay model tetrominoInPlay =
+    { model | current = InPlay tetrominoInPlay }
+
+
+setTimestamp : Int -> Model -> Model
+setTimestamp millis model =
+    { model | timestamp = millis }
 
 
 setNextTetromino : Tetromino -> Model -> Model
@@ -361,6 +386,11 @@ width =
 height : Int
 height =
     20
+
+
+dropDelay : Int
+dropDelay =
+    200
 
 
 getCell : Model -> Coordinate -> Cell
