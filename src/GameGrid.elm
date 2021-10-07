@@ -176,37 +176,50 @@ update msg model =
 
 tick : Int -> GameGridModel -> GameGridModel
 tick millis gameGridModel =
-    case gameGridModel of
-        Uninitialised ->
-            Initialised <|
-                Model
-                    NoTetromino
-                    (randomTetromino millis)
-                    []
-                    millis
+    Initialised <|
+        case gameGridModel of
+            Uninitialised ->
+                initialise millis
 
-        Initialised model ->
-            case model.current of
-                NoTetromino ->
-                    model
-                        |> putNextTetrominoInPlay
-                        |> setNextTetromino (randomTetromino millis)
-                        |> setTimestamp millis
-                        |> Initialised
+            Initialised model ->
+                case model.current of
+                    NoTetromino ->
+                        tickWhenNoTetromino millis model
 
-                InPlay tetrominoInPlay ->
-                    if timeToDrop model millis then
-                        tetrominoInPlay
-                            |> moveDown
-                            |> updateTetrominoInPlay model
-                            |> setTimestamp millis
-                            |> Initialised
+                    InPlay tetrominoInPlay ->
+                        tickWhenInPlay millis tetrominoInPlay model
 
-                    else
-                        Initialised model
+                    Landed tetrominoInPlay ->
+                        model
 
-                Landed tetrominoInPlay ->
-                    Initialised model
+
+initialise : Int -> Model
+initialise millis =
+    Model
+        NoTetromino
+        (randomTetromino millis)
+        []
+        millis
+
+
+tickWhenNoTetromino : Int -> Model -> Model
+tickWhenNoTetromino millis model =
+    model
+        |> putNextTetrominoInPlay
+        |> setNextTetromino (randomTetromino millis)
+        |> setTimestamp millis
+
+
+tickWhenInPlay : Int -> TetrominoInPlay -> Model -> Model
+tickWhenInPlay millis tetrominoInPlay model =
+    if timeToDrop model millis then
+        tetrominoInPlay
+            |> moveDown
+            |> updateTetrominoInPlay model
+            |> setTimestamp millis
+
+    else
+        model
 
 
 timeToDrop : Model -> Int -> Bool
