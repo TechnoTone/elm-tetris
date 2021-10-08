@@ -49,6 +49,7 @@ uninitialised =
 type GameGridModel
     = Uninitialised
     | Initialised Model
+    | GameOver Model
 
 
 type Msg
@@ -176,21 +177,23 @@ update msg model =
 
 tick : Int -> GameGridModel -> GameGridModel
 tick millis gameGridModel =
-    Initialised <|
-        case gameGridModel of
-            Uninitialised ->
-                initialise millis
+    case gameGridModel of
+        Uninitialised ->
+            Initialised <| initialise millis
 
-            Initialised model ->
-                case model.current of
-                    NoTetromino ->
-                        tickWhenNoTetromino millis model
+        Initialised model ->
+            case model.current of
+                NoTetromino ->
+                    tickWhenNoTetromino millis model
 
-                    InPlay tetrominoInPlay ->
-                        tickWhenInPlay millis tetrominoInPlay model
+                InPlay tetrominoInPlay ->
+                    Initialised <| tickWhenInPlay millis tetrominoInPlay model
 
-                    Landed tetrominoInPlay ->
-                        tickWhenLanded millis tetrominoInPlay model
+                Landed tetrominoInPlay ->
+                    Initialised <| tickWhenLanded millis tetrominoInPlay model
+
+        GameOver model ->
+            Initialised model
 
 
 initialise : Int -> Model
@@ -202,12 +205,21 @@ initialise millis =
         millis
 
 
-tickWhenNoTetromino : Int -> Model -> Model
+tickWhenNoTetromino : Int -> Model -> GameGridModel
 tickWhenNoTetromino millis model =
-    model
-        |> putNextTetrominoInPlay
-        |> setNextTetromino (randomTetromino millis)
-        |> setTimestamp millis
+    let
+        newTetromino =
+            nextTetrominoInPlay model.next
+    in
+    if validTetrominoPosition model.gridCells newTetromino then
+        newTetromino
+            |> updateTetrominoInPlay model
+            |> setNextTetromino (randomTetromino millis)
+            |> setTimestamp millis
+            |> Initialised
+
+    else
+        GameOver model
 
 
 tickWhenInPlay : Int -> TetrominoInPlay -> Model -> Model
@@ -246,16 +258,6 @@ clearCurrentTetromino model =
     { model | current = NoTetromino }
 
 
-timeToDrop : Model -> Int -> Bool
-timeToDrop model millis =
-    millis >= model.timestamp + dropDelay
-
-
-tetrominoCanDrop : TetrominoInPlay -> Model -> Bool
-tetrominoCanDrop tetrominoInPlay { gridCells } =
-    validTetrominoPosition (moveDown tetrominoInPlay) gridCells
-
-
 updateTetrominoInPlay : Model -> TetrominoInPlay -> Model
 updateTetrominoInPlay model tetrominoInPlay =
     { model | current = InPlay tetrominoInPlay }
@@ -274,34 +276,6 @@ setTimestamp millis model =
 setNextTetromino : Tetromino -> Model -> Model
 setNextTetromino next model =
     { model | next = next }
-
-
-putNextTetrominoInPlay : Model -> Model
-putNextTetrominoInPlay model =
-    let
-        bottomRow =
-            model.next.cells
-                |> List.map .row
-                |> List.maximum
-                |> Maybe.withDefault 0
-
-        bottomCellAverage =
-            model.next.cells
-                |> List.filter (.row >> (==) bottomRow)
-                |> List.map .col
-                |> List.foldl
-                    (\n acc ->
-                        ( Tuple.first acc + 1, Tuple.second acc + n )
-                    )
-                    ( 0, 0 )
-                |> (\( count, sum ) -> sum // count)
-
-        position =
-            Coordinate
-                ((width // 2) - bottomCellAverage - 1)
-                (0 - bottomRow)
-    in
-    { model | current = InPlay (TetrominoInPlay model.next position) }
 
 
 handleAction : PlayerAction.Action -> GameGridModel -> GameGridModel
@@ -384,15 +358,6 @@ translateUp { col, row } =
     Coordinate col (row - 1)
 
 
-absoluteCells : TetrominoInPlay -> List Coordinate
-absoluteCells { tetromino, position } =
-    tetromino.cells
-        |> List.map
-            (\{ col, row } ->
-                Coordinate (col + position.col) (row + position.row)
-            )
-
-
 mergeCurrentTetromino : CurrentTetromino -> List GridCell -> List GridCell
 mergeCurrentTetromino currentTetromino gridCells =
     case currentTetromino of
@@ -440,6 +405,11 @@ dropDelay =
     200
 
 
+timeToDrop : Model -> Int -> Bool
+timeToDrop model millis =
+    millis >= model.timestamp + dropDelay
+
+
 getCell : Model -> Coordinate -> Cell
 getCell model position =
     if isValidCoordinate position then
@@ -459,8 +429,8 @@ isValidCoordinate { col, row } =
     col >= 0 && col < width && row < height
 
 
-validTetrominoPosition : TetrominoInPlay -> List GridCell -> Bool
-validTetrominoPosition tetrominoInPlay gridCells =
+validTetrominoPosition : List GridCell -> TetrominoInPlay -> Bool
+validTetrominoPosition gridCells tetrominoInPlay =
     tetrominoInPlay
         |> absoluteCells
         |> List.all
@@ -468,6 +438,20 @@ validTetrominoPosition tetrominoInPlay gridCells =
                 isValidCoordinate pos
                     && not (List.any (\gc -> gc.position == pos) gridCells)
             )
+
+
+absoluteCells : TetrominoInPlay -> List Coordinate
+absoluteCells { tetromino, position } =
+    tetromino.cells
+        |> List.map
+            (\{ col, row } ->
+                Coordinate (col + position.col) (row + position.row)
+            )
+
+
+tetrominoCanDrop : TetrominoInPlay -> Model -> Bool
+tetrominoCanDrop tetrominoInPlay { gridCells } =
+    validTetrominoPosition gridCells (moveDown tetrominoInPlay)
 
 
 cellIsEmpty : Cell -> Bool
@@ -587,3 +571,31 @@ randomTetromino seed =
 
         _ ->
             z
+
+
+nextTetrominoInPlay : Tetromino -> TetrominoInPlay
+nextTetrominoInPlay next =
+    let
+        bottomRow =
+            next.cells
+                |> List.map .row
+                |> List.maximum
+                |> Maybe.withDefault 0
+
+        bottomCellAverage =
+            next.cells
+                |> List.filter (.row >> (==) bottomRow)
+                |> List.map .col
+                |> List.foldl
+                    (\n acc ->
+                        ( Tuple.first acc + 1, Tuple.second acc + n )
+                    )
+                    ( 0, 0 )
+                |> (\( count, sum ) -> sum // count)
+
+        position =
+            Coordinate
+                ((width // 2) - bottomCellAverage - 1)
+                (0 - bottomRow)
+    in
+    TetrominoInPlay next position

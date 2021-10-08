@@ -165,6 +165,19 @@ gameGrid =
             , position = xy 5 5
             }
 
+        multiCellTetromino =
+            { tetromino = Tetromino 2 GameGrid.tetrominoes.i.colour [ xy 0 0, xy 1 0, xy 0 1, xy 1 1 ]
+            , position = xy 5 5
+            }
+
+        emptyGameGrid =
+            []
+
+        nonEmptyGameGrid =
+            GameGrid.mergeTetrominoInPlay
+                singleCellTetromino
+                []
+
         toGridCell : coordinate -> { cell : Cell, position : coordinate }
         toGridCell coordinate =
             { cell = Alive GameGrid.tetrominoes.i.colour
@@ -173,65 +186,114 @@ gameGrid =
     in
     describe "GameGrid"
         [ test "merges TetrominoInPlay"
-            ([]
+            (emptyGameGrid
                 |> GameGrid.mergeTetrominoInPlay singleCellTetromino
                 |> equal [ toGridCell (xy 5 5) ]
                 |> always
             )
         , describe "identifies valid tetromino position"
-            [ test "when tetromino is on the grid"
-                ([]
-                    |> GameGrid.validTetrominoPosition singleCellTetromino
+            [ test "when tetromino is on an empty grid"
+                (singleCellTetromino
+                    |> GameGrid.validTetrominoPosition emptyGameGrid
+                    |> equal True
+                    |> always
+                )
+            , test "when tetromino is above occupied cell"
+                (singleCellTetromino
+                    |> GameGrid.moveUp
+                    |> GameGrid.validTetrominoPosition nonEmptyGameGrid
+                    |> equal True
+                    |> always
+                )
+            , test "when tetromino is below occupied cell"
+                (singleCellTetromino
+                    |> GameGrid.moveDown
+                    |> GameGrid.validTetrominoPosition nonEmptyGameGrid
+                    |> equal True
+                    |> always
+                )
+            , test "when tetromino is left of occupied cell"
+                (singleCellTetromino
+                    |> GameGrid.moveLeft
+                    |> GameGrid.validTetrominoPosition nonEmptyGameGrid
+                    |> equal True
+                    |> always
+                )
+            , test "when tetromino is right of occupied cell"
+                (singleCellTetromino
+                    |> GameGrid.moveRight
+                    |> GameGrid.validTetrominoPosition nonEmptyGameGrid
                     |> equal True
                     |> always
                 )
             , test "when tetromino is out of bounds to the top"
-                ([]
-                    |> GameGrid.validTetrominoPosition
-                        (singleCellTetromino
-                            |> GameGrid.moveUp
-                            |> GameGrid.moveUp
-                            |> GameGrid.moveUp
-                            |> GameGrid.moveUp
-                            |> GameGrid.moveUp
-                            |> GameGrid.moveUp
-                        )
+                (singleCellTetromino
+                    |> GameGrid.moveUp
+                    |> GameGrid.moveUp
+                    |> GameGrid.moveUp
+                    |> GameGrid.moveUp
+                    |> GameGrid.moveUp
+                    |> GameGrid.moveUp
+                    |> GameGrid.validTetrominoPosition emptyGameGrid
                     |> equal True
                     |> always
                 )
             ]
         , describe "identifies invalid tetromino position"
             [ test "out of bounds to the left"
-                ([]
-                    |> GameGrid.validTetrominoPosition
-                        (singleCellTetromino
-                            |> GameGrid.moveLeft
-                            |> GameGrid.moveLeft
-                            |> GameGrid.moveLeft
-                            |> GameGrid.moveLeft
-                            |> GameGrid.moveLeft
-                            |> GameGrid.moveLeft
-                        )
+                (singleCellTetromino
+                    |> GameGrid.moveLeft
+                    |> GameGrid.moveLeft
+                    |> GameGrid.moveLeft
+                    |> GameGrid.moveLeft
+                    |> GameGrid.moveLeft
+                    |> GameGrid.moveLeft
+                    |> GameGrid.validTetrominoPosition emptyGameGrid
                     |> equal False
                     |> always
                 )
             , test "out of bounds to the right"
-                ([]
-                    |> GameGrid.validTetrominoPosition
-                        (singleCellTetromino
-                            |> GameGrid.moveRight
-                            |> GameGrid.moveRight
-                            |> GameGrid.moveRight
-                            |> GameGrid.moveRight
-                            |> GameGrid.moveRight
-                        )
+                (singleCellTetromino
+                    |> GameGrid.moveRight
+                    |> GameGrid.moveRight
+                    |> GameGrid.moveRight
+                    |> GameGrid.moveRight
+                    |> GameGrid.moveRight
+                    |> GameGrid.validTetrominoPosition emptyGameGrid
                     |> equal False
                     |> always
                 )
             , test "collides with existing cells"
-                ([]
-                    |> GameGrid.mergeTetrominoInPlay singleCellTetromino
-                    |> GameGrid.validTetrominoPosition singleCellTetromino
+                (singleCellTetromino
+                    |> GameGrid.validTetrominoPosition nonEmptyGameGrid
+                    |> equal False
+                    |> always
+                )
+            , test "collides on tetromino cell 1"
+                (multiCellTetromino
+                    |> GameGrid.validTetrominoPosition nonEmptyGameGrid
+                    |> equal False
+                    |> always
+                )
+            , test "collides on tetromino cell 2"
+                (multiCellTetromino
+                    |> GameGrid.moveLeft
+                    |> GameGrid.validTetrominoPosition nonEmptyGameGrid
+                    |> equal False
+                    |> always
+                )
+            , test "collides on tetromino cell 3"
+                (multiCellTetromino
+                    |> GameGrid.moveUp
+                    |> GameGrid.validTetrominoPosition nonEmptyGameGrid
+                    |> equal False
+                    |> always
+                )
+            , test "collides on tetromino cell 4"
+                (multiCellTetromino
+                    |> GameGrid.moveLeft
+                    |> GameGrid.moveUp
+                    |> GameGrid.validTetrominoPosition nonEmptyGameGrid
                     |> equal False
                     |> always
                 )
