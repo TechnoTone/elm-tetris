@@ -198,9 +198,18 @@ update msg model =
             let
                 ms =
                     Time.posixToMillis posix
+
+                gameGrid =
+                    GameGrid.tick ms model.gameGrid
+
+                updateFn =
+                    if GameGrid.isGameOver gameGrid then
+                        setGameGrid gameGrid >> setPhase (GameOver ms)
+
+                    else
+                        setGameGrid gameGrid
             in
-            updateModel
-                (setGameGrid (GameGrid.tick ms model.gameGrid))
+            updateModel updateFn
 
         ( Tick posix, GameOver since ) ->
             if since + 5000 <= Time.posixToMillis posix then
@@ -368,16 +377,16 @@ main =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.gamePhase of
-        Playing ->
+        TitleScreen ->
             Sub.batch
-                [ Browser.onAnimationFrame Tick
-                , Browser.onKeyDown (Decode.map PlayerAction keyDecoder)
+                [ Browser.onKeyDown (Decode.map PlayerAction keyDecoder)
                 , Browser.onResize WindowResize
                 ]
 
         _ ->
             Sub.batch
-                [ Browser.onKeyDown (Decode.map PlayerAction keyDecoder)
+                [ Browser.onAnimationFrame Tick
+                , Browser.onKeyDown (Decode.map PlayerAction keyDecoder)
                 , Browser.onResize WindowResize
                 ]
 

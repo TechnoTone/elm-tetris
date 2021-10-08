@@ -7,6 +7,7 @@ module GameGrid exposing
     , Msg
     , handleAction
     , height
+    , isGameOver
     , mergeTetrominoInPlay
     , moveDown
     , moveLeft
@@ -67,13 +68,16 @@ type Msg
 
 
 view : GameGridModel -> Html Msg
-view model =
-    case model of
-        Initialised gameGridModel ->
-            viewGameGrid gameGridModel
-
-        _ ->
+view gameGridModel =
+    case gameGridModel of
+        Uninitialised ->
             text "Initialising..."
+
+        Initialised model ->
+            viewGameGrid model
+
+        GameOver model ->
+            viewGameGrid model
 
 
 viewGameGrid : Model -> Html Msg
@@ -193,7 +197,7 @@ tick millis gameGridModel =
                     Initialised <| tickWhenLanded millis tetrominoInPlay model
 
         GameOver model ->
-            Initialised model
+            GameOver model
 
 
 initialise : Int -> Model
@@ -422,6 +426,16 @@ getCell model position =
 
     else
         OutOfBounds
+
+
+isGameOver : GameGridModel -> Bool
+isGameOver gameGridModel =
+    case gameGridModel of
+        GameOver _ ->
+            True
+
+        _ ->
+            False
 
 
 isValidCoordinate : Coordinate -> Bool
