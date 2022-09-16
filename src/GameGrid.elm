@@ -283,19 +283,80 @@ setNextTetromino next model =
 
 
 handleAction : PlayerAction.Action -> GameGridModel -> GameGridModel
-handleAction action model =
+handleAction action gameGridModel =
+    case gameGridModel of
+        Uninitialised ->
+            Uninitialised
+
+        Initialised model ->
+            actionHandler action model |> Initialised
+
+        GameOver model ->
+            actionHandler action model |> GameOver
+
+
+actionHandler : PlayerAction.Action -> Model -> Model
+actionHandler action model =
     case action of
         PlayerAction.RotateLeft ->
-            model
+            case model.current of
+                NoTetromino ->
+                    model
+
+                InPlay tetrominoInPlay ->
+                    tetrominoInPlay
+                        |> rotateTetrominoInPlay
+                        |> rotateTetrominoInPlay
+                        |> rotateTetrominoInPlay
+                        |> updateTetrominoInPlay model
+
+                Landed tetrominoInPlay ->
+                    { model | current = Landed tetrominoInPlay }
 
         PlayerAction.RotateRight ->
-            model
+            case model.current of
+                NoTetromino ->
+                    model
+
+                InPlay tetrominoInPlay ->
+                    tetrominoInPlay
+                        |> rotateTetrominoInPlay
+                        |> updateTetrominoInPlay model
+
+                Landed tetrominoInPlay ->
+                    { model | current = Landed tetrominoInPlay }
 
         PlayerAction.Left ->
-            model
+            case model.current of
+                NoTetromino ->
+                    model
+
+                InPlay tetrominoInPlay ->
+                    if tetrominoInPlay.position.col > 0 then
+                        moveLeft tetrominoInPlay
+                            |> updateTetrominoInPlay model
+
+                    else
+                        model
+
+                Landed tetrominoInPlay ->
+                    { model | current = Landed tetrominoInPlay }
 
         PlayerAction.Right ->
-            model
+            case model.current of
+                NoTetromino ->
+                    model
+
+                InPlay tetrominoInPlay ->
+                    if tetrominoInPlay.position.col > 0 then
+                        moveRight tetrominoInPlay
+                            |> updateTetrominoInPlay model
+
+                    else
+                        model
+
+                Landed tetrominoInPlay ->
+                    { model | current = Landed tetrominoInPlay }
 
         PlayerAction.Down ->
             model
@@ -305,6 +366,11 @@ handleAction action model =
 
         PlayerAction.None ->
             model
+
+
+rotateTetrominoInPlay : TetrominoInPlay -> TetrominoInPlay
+rotateTetrominoInPlay tetrominoInPlay =
+    { tetrominoInPlay | tetromino = rotateTetromino tetrominoInPlay.tetromino }
 
 
 rotateTetromino : Tetromino -> Tetromino
