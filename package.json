@@ -8,10 +8,9 @@
   "author": "Tony Hunt",
   "source": "index.html",
   "devDependencies": {
+    "@parcel/transformer-elm": "^2.9.3",
+    "@parcel/transformer-less": "^2.9.3",
     "elm": "^0.19.1-5",
-    "elm-hot": "^1.1.6",
-    "less": "^4.1.1",
-    "node-elm-compiler": "^5.0.6",
-    "parcel-bundler": "^1.12.5"
+    "parcel": "^2.9.3"
   }
 }
