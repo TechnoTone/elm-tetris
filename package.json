@@ -11,7 +11,6 @@
     "@parcel/transformer-elm": "^2.9.3",
     "@parcel/transformer-less": "^2.9.3",
     "elm": "^0.19.1-5",
-    "elm-test": "^0.19.1-revision12",
     "parcel": "^2.9.3"
   }
 }
